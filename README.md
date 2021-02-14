@@ -145,7 +145,7 @@ The state will be "Creating" for a few minutes (usually 3-4 mins)
 
 We can move on to the Cloud Shell Setup for the Kubernetes Labs module while the cluster continues to be provisioned.
 
-### Step5: Kubernetes labs - Cloud Shell setup (Accessing the cloud shell)
+### Step 5: Kubernetes labs - Cloud Shell setup (Accessing the cloud shell)
 The OCI Cloud Shell is accessible through the Oracle Cloud GUI, and has a number of elements set up out of the box, like the Oracle Cloud Command Line Interface, and it also has quite some useful command-line tools pre-installed, like git, docker, kubectl, helm and more.
 
 To access the OCI Cloud Shell, you can use the native browser on your laptop (you don't need to use the Linux desktop VM anymore).
