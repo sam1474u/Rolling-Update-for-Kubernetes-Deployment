@@ -67,7 +67,7 @@ Once the instance is running click on the Copy button by the OCID, this will cop
 
 Open a document and paste the OCID, you will need this later in the setup.
 
-Setup your user in the database
+### Setup your user in the database
 
 We need to configure the database user so it matches the lab instructions
 Now the instance is running click on the Tools tab, then Open SQL Developer Web button.
