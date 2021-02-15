@@ -1323,6 +1323,204 @@ Look for the section (just after the Liveness probe) where we define the readine
 
 ![image](https://user-images.githubusercontent.com/42166489/107917907-b81ed680-6f8e-11eb-8529-6bc5d75590d9.png)
 
+The various options for readiness are similar to those for Liveliness, except you see here we've got an exec instead of httpGet.
+
+The exec means that we are going to run code inside the pod to determine if the pod is ready to serve requests. The command section defines the command that will be run and the arguments. In this case we run the /bin/bash shell, -c means to use the arguments as a command (so it won't try and be interactive) and 'curl -s http://localhost:9080/health/ready | grep "\"outcome\":\"UP\""' is the command.
+
+Some points about 
+
+```
+'curl -s http://localhost:9080/health/ready | grep "\"outcome\":\"UP\""'
+```
+
+Firstly this is a command string that actually runs several commands connecting the output of one to the input of the other. If you exec to the pod you can actually run these by hand if you like
+
+The first (the curl) gets the readiness data from the service (you may remember this in the Helidon labs) In this case as the code is running within the pod itself, so it's a localhost connection and as it'd direct to the micro-service it's http
+
+```
+root@storefront-b44457b4d-29jr7:/# curl -s http://localhost:9080/health/ready 
+{"outcome":"UP","status":"UP","checks":[{"name":"storefront-ready","state":"UP","status":"UP","data":{"storename":"My Shop"}}]}
+```
+
+We can just use the final command the grep to look for a line containing "outcome":"UP" We do however have to be careful because " is actually part of what we want to look for (and if you ran the text thoguht a json formatter you may have space characters) So to define these as a constant we need to ensure it's a single string, we do this by enclosing the entire thing in quotes " and to prevent the " within the string being interpreted as end of string (and thus new argument) characters we need to escape them, hence we end up with "\"outcome\":\"UP\""
+
+Now try it out:
+
+Connect to the pod
+
+```
+kubectl exec -ti storefront-b44457b4d-29jr7 -- /bin/bash
+```
+
+Run the command in the pod:    
+
+```
+curl -s http://localhost:9080/health/ready | grep "\"outcome\":\"UP\""
+```
+
+{"outcome":"UP","status":"UP","checks":[{"name":"storefront-ready","state":"UP","status":"UP","data":{"storename":"My Shop"}}]}
+
+In this case the pod is ready, so the grep command returns what it's found. We are not actually concerned with what the pod returns in terms of string output, we are looking for the exit code, interactively we can find that by looking in the $? variable:
+
+Inside the pod look at the output of the previous command
+
+```
+echo $?
+```
+
+output: 0
+
+And can see that the variable value (which is what's returned back to the Kubernetes readiness infrastructure) is 0. In Unix / Linux terms this means success.
+
+If you want to see what it would do if the outcome was not UP try running the command changing the UP to DOWN like this (or actually anything other than UP). Important While you can run this command in the pods shell DO NOT modify the actual yaml files.
+
+root@storefront-b44457b4d-29jr7:/# curl -s http://localhost:9080/health/ready | grep "\"outcome\":\"DOWN\""
+root@storefront-b44457b4d-29jr7:/# echo $?
+1
+
+In this case the return value in $? is 1, not 0, and in Unix / Linux terms that means something's gone wrong.
+
+The whole thing is held in single quotes 'curl -s http://localhost:9080/health/ready | grep "\"outcome\":\"UP\""' to that it's treated as a single string by the yaml file parser and when being handed to the bash shell.
+
+Remember, in this case the command is executed inside the container, so you have to make sure that the commands you want to run will be available. This is especially important if you change the base image, you might find you are relying on a command that's no longer there, or works in a different way from your expectations.
+
+That's all we're going to do with bash shell programming for now!
+Having made the changes let's undeploy the existing configuration and then deploy the new one.
+
+In the other OCI cloud shell:
+![image](https://user-images.githubusercontent.com/42166489/107944768-a6e8c080-6fb4-11eb-9d7c-05b13a8f1705.png)
+
+In the OCI Cloud Shell
+Navigate to the $HOME/helidon-kubernetes folder
+Let's stop the services running, run the undeploy.sh script
+
+```
+bash undeploy.sh
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107944790-b23bec00-6fb4-11eb-95a6-b089a2ab936a.png)
+
+Check only the services remain running :
+```
+kubectl get all
+```
+
+Now let's deploy them again, run the deploy.sh script, be prepared to run kubectl get all within a few seconds of the deploy finishing.
+Run the deploy script
+
+```
+bash deploy.sh
+```
+
+Immediately run the command in the OCI cloud shell
+
+```
+kubectl get all
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107944819-bbc55400-6fb4-11eb-8abe-4e02caf1e057.png)
+
+Now everything is ready, but why the delay ? What's caused it ? And why didn't it happen before ?
+
+Well the answer is simple. If there is a readiness probe enabled a pod is not considered ready until the readiness probe reports success. Prior to that the pod is not in the set of pods that can deliver a service.
+
+As to why it didn't happen before, if a pod does not have a readiness probe specified then it is automatically assumed to be in a ready state as soon as it's running
+
+What happens if a request is made to the service while before the pod is ready ? Well if there are other pods in the service (the selector for the service matches the labels and the pods are ready to respond) then the service requests are sent to those pods. If there are no pods ab.e to service the requests than a 503 "Service Temporarily Unavailable" is generated back to the caller
+
+To see what happens if the readiness probe does not work we can simply undeploy the stock manager service.
+
+    First let's check it's running fine (replace the with the one for your service, and be prepared for a short delay as we'd just restarted everything)
+
+curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
+curl -i -k -X GET -u jack:password https://152.67.28.51/store/stocklevel
+
+HTTP/1.1 424 Failed Dependency
+Date: Fri, 12 Feb 2021 10:45:34 GMT
+Content-Type: application/json
+Transfer-Encoding: chunked
+Connection: keep-alive
+
+Now let's use kubectl to undeploy just the stockmanager service
+kubectl delete -f stockmanager-deployment.yaml
+
+Let's check the pods status
+kubectl get pods
+
+The stock manager service is being stopped (this is quite a fast process, so it may have completed before you ran the command). After 60 seconds or so if we run kubectl to get everything we see it's gone (note this is all, not pods here)
+
+Make sure that the stockmanager pod and deployment are terminated
+kubectl get all
+
+Something else has also happened though, the storefront service has no pods in the ready state, neither does the storefront deployment and replica set. The readiness probe has run against the storefront pod and when the probe checked the results it found that the storefront pod was not in a position to operate, because the service it depended on (the stock manager) was no longer available.
+
+Let's try accessing the service (replace with the one for your service)
+curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
+
+![image](https://user-images.githubusercontent.com/42166489/107944852-c97ad980-6fb4-11eb-8068-09874cd992d8.png)
+
+The service is giving us a 503 Service Temporarily Unavailable message. Well to be precise this is coming from the Kubernetes as it can't find a storefront service that is in the ready state.
+
+Let's start the stockmager service using kubectl again
+kubectl apply -f stockmanager-deployment.yaml
+
+Immediately let's look at the situation
+
+```
+kubectl get all
+```
+
+Again Looking at the kubectl output about 120 seconds later:
+
+```
+kubectl get all
+```
+
+The storefront readiness probe has kicked in and the services are all back in the ready state once again (replace with the one for your service)
+
+![image](https://user-images.githubusercontent.com/42166489/107944883-d26bab00-6fb4-11eb-8a14-2b501f16ba54.png)
+
+Check the service is responding properly now
+
+```
+curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
+```
+
+Startup probes:
+
+You may have noticed above that we had to wait for the liveness probe to complete it's initial delay it started checking. As the liveness probe checks for the service running this means we can't start checking until liveness probe has started. But equally we don't want to set the initial delay of the liveness probe to be to low as it might start checking before the service is running, and then kill the service off before it's finished it's setup. In the case of the storefront this is not to much of a problem as the service starts up fast, but for a more complex service, especially a legacy service that may have a startup time that varies a lot depending on other factors, this could be a problem.
+
+To solve this in Kubernetes 1.18 the concept of startup probes will be introduced as a beta feature. A startup probe is a very simple probe that tests to see if the service has started running, usually at a basic level, and then starts up the liveness probes. Effectively the startupProbe means there is no longer any need for the initialDelaySeconds on the liveness probe.
+
+Let's enable this.
+Edit the storefront-deployment.yaml file
+Locate the startupProbe: section
+
+Remove the # at the beginning of each line, only remove that character, be careful not to remove anything else
+The result should look like this:
+
+![image](https://user-images.githubusercontent.com/42166489/107944908-da2b4f80-6fb4-11eb-957e-1b31d6fd8fed.png)
+
+Locate the initialDelaySeconds: in the livenessprobe section
+Place a # just before the content
+
+The result should look like this 
+
+![image](https://user-images.githubusercontent.com/42166489/107944939-e44d4e00-6fb4-11eb-9a40-9788b0358457.png)
+
+Restart the storefront
+
+```
+kubectl apply -f storefront-deployment.yaml
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107944971-f3cc9700-6fb4-11eb-9583-94ee85954228.png)
+
+There isn't anything obvious happening here from a user perspective, but now if there is a problem with the deployment the liveness probe will pick it up a lot faster.
+
+
+
+
 
 
 
