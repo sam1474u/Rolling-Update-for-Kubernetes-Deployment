@@ -1104,7 +1104,7 @@ You may recall in the Helidon labs (if you did them) we created a liveness probe
 
 
 * Try getting the data
-* 
+
 
 ```
 curl -i -k -X GET -u jack:password https://<External IP>/store/stocklevel
