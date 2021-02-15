@@ -542,6 +542,129 @@ Get the token of the newly created user:
 kubectl -n kube-system describe secret `kubectl -n kube-system get secret | grep dashboard-user | awk '{print $1}'`
 ```
 
+![image](https://user-images.githubusercontent.com/42166489/107910707-f2817700-6f80-11eb-9718-180a6b211105.png)
+
+Please save the token in a plain editor in you system. We may need it later.
+
+As the OCI Cloud Shell runs in a web browser and is not itself a web browser we need to setup access so that the kubernetes-dashboard is available to your web browser on your laptop. This would normally be a problem as it would be running on a network that it internal to the cluster.
+
+Fortunately for us helm is a very powerful mechanism for configuring services, and when we used the helm command to install the dashboard we told it that the service.type was LoadBalancer, this will automatically setup a load balancer for us, making the dashbaord service visible on the public internet, we just need the IP address to use.
+
+To get the IP address of the dashboard load balancer run the following command
+kubectl get service kubernetes-dashboard -n kube-system
+
+```
+Saikat_Dey@cloudshell:base-kubernetes (ap-mumbai-1)$ kubectl get service kubernetes-dashboard -n kube-system
+NAME                   TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)         AGE
+kubernetes-dashboard   LoadBalancer   10.96.22.254   152.67.31.203   443:30576/TCP   138m
+```
+
+The IP address of the load balancer is in the EXTERNAL-IP column. Note that this can take a few minutes to be assigned, so it it's listed as just re-run the kubectl get command after a short while
+
+Looking around the dashboard.
+
+Open a web browser and using the IP address you got above and go to
+```
+https://<load balancer ip address>/#!/login
+```
+
+Eg: https://152.67.31.203/#/login
+Note: I have tried this is Chrome and Safari but the browser did nit allow me. Tried on Firefox, it worked there.
+
+In Firefox once the security risk page is displayed click on the "Advanced" button, then on the "Accept Risk and Continue" button.
+![image](https://user-images.githubusercontent.com/42166489/107910921-6e7bbf00-6f81-11eb-8c73-0c8056cfa6a7.png)
+
+You'll now be presented with the login screen for the dashboard.
+
+Click the radio button for the Token
+Enter the token for the admin-user you retrieved earlier
+Accept to save the password if given the option, it'll make things easier on the next login
+Press Sign In.
+
+![image](https://user-images.githubusercontent.com/42166489/107910937-79365400-6f81-11eb-8ad5-ba0b0adae255.png)
+
+Once signed in, a dashboard will be shown.
+
+![image](https://user-images.githubusercontent.com/42166489/107910986-92d79b80-6f81-11eb-96d8-a499d0dc86cf.png)
+
+In the Namespace section on the click the dropdown to select the kube-system namespace
+
+![image](https://user-images.githubusercontent.com/42166489/107911005-9bc86d00-6f81-11eb-947d-ec9302dc9b36.png)
+
+Select kube-system, precisely which page you'll go to will depend on what was selected in the left menu when you switched namespaces, but in my case it took me to an overview page.
+
+Let's switch to see the details of the workspace, Click Workloads on the left menu
+
+![image](https://user-images.githubusercontent.com/42166489/107911021-a420a800-6f81-11eb-8261-3eac907c835e.png)
+
+You can use the Kubernetes dashboard to navigate the relationships between the resources. Let's start by looking at the services in the kube-system namespace
+
+In the Service section on the left menu click Services
+
+If you scroll down the page to services you'll see the kubentes-dashboard service listed,
+
+![image](https://user-images.githubusercontent.com/42166489/107911046-af73d380-6f81-11eb-9779-80ee699cd4e5.png)
+
+Click on the service name kubernetes-dashboard to get the details of the service, including the pods it's running on.
+
+![image](https://user-images.githubusercontent.com/42166489/107911060-b6024b00-6f81-11eb-90e0-537109ce0a73.png)
+
+If you click the Deployments in the Workloads section of the left menu you'll see the deployments list (the dashboard, coredns and auto-scaler services)
+
+![image](https://user-images.githubusercontent.com/42166489/107911082-be5a8600-6f81-11eb-8b96-6a88112f94ca.png)
+
+Click on the kubernetes-dashboard deployment to look into the detail of the deployment and you'll see the deployment details, including the list of replica sets that are in use. We'll look into the old / new distinction when we look at rolling upgrades)
+
+![image](https://user-images.githubusercontent.com/42166489/107911097-c61a2a80-6f81-11eb-9f78-6540ad2b86db.png)
+
+Scroll down until you can see the replica set section
+
+Click on the replica set name (kubernetes-dashboard-699cc9f655 in this case) then scroll down a bit to see the pods in the replica set.
+
+![image](https://user-images.githubusercontent.com/42166489/107911106-cdd9cf00-6f81-11eb-8602-16f1a819bd6e.png)
+
+In this case there's only one pod (kubernetes-dashboard-699cc9f655-jz4ph in this case, yours will vary) so click on that to see the details of the pod.
+
+![image](https://user-images.githubusercontent.com/42166489/107912857-4e4dff00-6f85-11eb-8dca-f455141c7e55.png)
+
+Using kubernetes-dashboard to look at a pod provides several useful features, we can look at any log data it's generated (output the pod has written to stderr or stdout)
+
+![image](https://user-images.githubusercontent.com/42166489/107912873-573ed080-6f85-11eb-875a-b42c65b31d28.png)
+
+![image](https://user-images.githubusercontent.com/42166489/107912879-5a39c100-6f85-11eb-84aa-f4af9e73d60d.png)
+
+This displays the log data which can be very useful when debugging. Of course it's also possible to use kubectl to download logs info if you wanted to rather than just displaying it in the browser.
+
+There is also the ability to use the dashboard to connect to a running container in a pod. This could be useful for debugging, and later on we'll use this to trigger a simulated pod failure when we explore service availability.
+
+Starting an Ingress controller for accepting external data:
+
+There is one other core service we need to install before we can start running our microservices, the Ingress controller. An Ingress controller provides the actual ingress capability, but it also needs to be configured.
+
+An Ingress in Kubernetes is one mechanism for external / public internet clients to access http / https connections (and thus REST API's) It is basically a web proxy which can process specific URL's forwarding data received to a particular microservice / URL on that microservice.
+
+For this lab we're going to use an nginx based Ingress controller. The nginx based Ingress controller we use here is maintained by the Kubernetes team, but there are several others that could be used in your environments if you want. There are a list of commercial and open source Ingress controllers in the Kubernetes ingress documentation
+
+Firstly we need to create a namespace for the ingress controller.
+
+Run the following command :
+kubectl create namespace ingress-nginx
+
+Output:     namespace/ingress-nginx created
+
+To enable the lab to complete in a reasonable time we will therefore be generating our own self-signed certificate. For a lab environment that's fine, but in a production environment you wouldn't do this.
+
+Run the following command to generate a certificate.
+
+```
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=nginxsvc/O=nginxsvc"
+```
+
+Run the following command to save the certificate as a secret in the ingress-nginx namespace
+kubectl create secret tls tls-secret --key tls.key --cert tls.crt -n ingress-nginx
+
+![image](https://user-images.githubusercontent.com/42166489/107912911-6faeeb00-6f85-11eb-9378-f7b7e1ddfbc4.png)
+
 
 
 
