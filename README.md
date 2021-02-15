@@ -1518,6 +1518,503 @@ kubectl apply -f storefront-deployment.yaml
 
 There isn't anything obvious happening here from a user perspective, but now if there is a problem with the deployment the liveness probe will pick it up a lot faster.
 
+### Cloud Native - Horizontal Scaling manually:
+
+Kubernetes has built in support for easily managing the horizontal scaling of services.
+
+In many of the labs when you've looked at the contents of the namespace you'll have seen things called replica sets, and may have wondered what they are. We can get this info using kubectl.
+
+Let's look at the replica sets. In the OCI Cloud Shell, type
+```
+kubectl get all
+```
+
+```
+Saikat_Dey@cloudshell:~ (ap-mumbai-1)$ kubectl get all
+NAME                              READY   STATUS    RESTARTS   AGE
+pod/stockmanager-58c6c94b-dwh9k   1/1     Running   0          58m
+pod/storefront-6ffdd9cc6b-gc9vr   1/1     Running   0          41m
+pod/storefront-6ffdd9cc6b-p4xr9   1/1     Running   0          9m9s
+pod/storefront-6ffdd9cc6b-tlndv   1/1     Running   0          9m9s
+pod/storefront-6ffdd9cc6b-xb2v8   1/1     Running   0          9m9s
+pod/zipkin-7d6d5f96fd-bn2cx       1/1     Running   0          80m
+
+NAME                   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)             AGE
+service/stockmanager   ClusterIP   10.96.60.86    <none>        8081/TCP,9081/TCP   23h
+service/storefront     ClusterIP   10.96.26.210   <none>        8080/TCP,9080/TCP   23h
+service/zipkin         ClusterIP   10.96.43.112   <none>        9411/TCP            23h
+
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/stockmanager   1/1     1            1           58m
+deployment.apps/storefront     4/4     4            4           80m
+deployment.apps/zipkin         1/1     1            1           80m
+
+NAME                                    DESIRED   CURRENT   READY   AGE
+replicaset.apps/stockmanager-58c6c94b   1         1         1       58m
+replicaset.apps/storefront-6ffdd9cc6b   4         4         4       41m
+replicaset.apps/storefront-7fcddb9d5b   0         0         0       80m
+replicaset.apps/zipkin-7d6d5f96fd       1         1         1       80m
+```
+
+You can see that there is a replica set for each deployment. They are actually implicitly defined in the deployment yaml files, though they don't have an explicit section the replicas : 1 line tells the Kubernetes deployment to automatically create a replica set for us with one of the pods (as the pod is described later in the file). If we hadn't specified the replicas : 1 line it defaults to a single pod. Kubernetes will create a replica set automatically for us with a single pod for each deployment, and as we've seen in the health, liveness and readiness labs if there is a problem it will automatically restart the services so that there is one service available.
+
+Deployments vs replica sets
+
+We can if we want modify the number of replicas in the deployment by modifying the YAML and then re-applying it, or of course we could use the kubectl scale command to do it as well, but for this lab we're going to use the dashboard.
+Open the dashboard and switch to your namespace (tg-helidon in my case)
+In the left menu under the Workloads section chose Deployments.
+
+![image](https://user-images.githubusercontent.com/42166489/107946512-24adcb80-6fb7-11eb-810d-d7c0ed501800.png)
+
+(I know you can go direct to the replica sets, but I want to show how they are connected to the deployments)
+
+You can see our three deployments (Zipkin, storefront and stock manager) and in the Pods column we can see that each has 1 / 1 pods (So one pod running out of a requested one pod to run).
+Click on the storefront deployment for more details.
+
+We'll see the details of the deployment, scroll down a bit to get to the Replica sets section
+In the New replica set section we can see details of the current replica set, there is nothing in the Old Replica Sets section as we haven't made any rolling updates, we'll do that later in the lab.
+
+In the New replica set section if we click on the replica set name we can see the details of it.
+
+In the Pod Status section we can see that there is 1 pod running out of 1 pod desired.
+Go back to the storefront deployment.
+
+Scaling the deployment is simple, :
+Click on the Scale Icon on the upper right of the deployment pagescaling-scale-icon
+In the new pop up enter the desired number of pods you want. Enter 4.
+
+![image](https://user-images.githubusercontent.com/42166489/107946538-2e373380-6fb7-11eb-8dc7-76458c540978.png)
+
+Click the Scale button
+
+Kubernetes immediately gets to work creating new pods for us, you can see this in the pod status section of the page.
+
+![image](https://user-images.githubusercontent.com/42166489/107946575-3a22f580-6fb7-11eb-9e4b-fdb3727ec162.png)
+
+Scroll down to the Replica sets section of the deployment.
+
+And if we drill down into the replica set we can see the pods themselves being created
+Click on the replica set name.
+
+![image](https://user-images.githubusercontent.com/42166489/107946606-44dd8a80-6fb7-11eb-884f-e0ca4f36ac32.png)
+
+Notice that most of these have a grey partially complete "pie graph" at the start of the line. That means that the pod is in the process of starting up (probably pulling the image). On your screen you may have a red warning circle, that means that the pod has started, but is not yet ready (I.e. the readiness probe is failing). The green check is on the original pod, which was of course running before we started the scaling operation. The Service will send requests to the pods marked green
+
+Remember that the storefront uses a readiness probe, so it may be a while before those pods are reporting ready.
+Click on the pod name of a pod that is not yet ready, Look at the Conditions section.
+
+![image](https://user-images.githubusercontent.com/42166489/107946631-4dce5c00-6fb7-11eb-9757-e4316ae1cfe5.png)
+
+You can see the details of the startup process, in this case the pod is not ready because the container within it is not yet ready.
+
+After a short while the pod will become ready
+Once they are ready return to the replica set.
+
+Click the replica set name in the controlled by section (storefront-579968f88b in this case).
+That returns you to the replica set page, you can see that they will show up in the replica set as ready
+
+I had to scroll down a little to get this image.
+
+![image](https://user-images.githubusercontent.com/42166489/107946660-5888f100-6fb7-11eb-83d6-09d573c89b64.png)
+
+If you scroll down in the replica set page you'll see the Events section, and can see the pods have been created.
+
+![image](https://user-images.githubusercontent.com/42166489/107946671-60489580-6fb7-11eb-9f58-0dec1a1d9357.png)
+
+And if we go back to the deployments list we'll see the pods is now 4 of 4 ready
+Click Deployments on the left menu.
+
+![image](https://user-images.githubusercontent.com/42166489/107946708-69396700-6fb7-11eb-9d21-dbb3684063ec.png)
+
+In the pods section we can see that we have 4 pods
+
+If on the deployments page we scroll down to the Events section and see the list of events for that deployment, our scaling event is there! 
+
+![image](https://user-images.githubusercontent.com/42166489/107946736-722a3880-6fb7-11eb-8bcc-d8c2816aa1ee.png)
+
+If you are on a Kubernetes cluster with multiple physical nodes the scaling operation will try and place the pods on different nodes, protecting the service so if one node fails for any reason the other nodes can still be used to provide the service.
+
+Reset the count:
+To prepare for the following lab sections please go back to the storefront deployment and follow the approach described above to scale it back down to a single pod.
+
+### Cloud Native - Auto scaling
+
+This module explores how you can configure Kubernetes to automatically scale the number of pods for your service to handle changes in demand with no manual intervention.
+
+We've seen how we can increase (or decrease) the number of pods underlying a service and that the service will automatically balance the load across the pods for us as the pod count changes.
+
+This is great, but it required manual intervention to change the number of pods, and that means we need to keep an eye on what's happening. Fortunately for us Kubernetes has support for automating this process based on rules we define.
+
+This is the simplest form of auto scaling, though it is also the least flexible as CPU and memory usage may not always be the most effective indicator of when scaling is required.
+
+To gather the data we need to have installed the metrics server. This is a replacement for an older Kubernetes service called heapster.
+
+Note that it's also possible to use Prometheus as a data source which will allow you to auto-scale on custom metrics, for example the number of requests to your service.
+
+For now we are going to use the simplest approach of the metrics server.
+Step 1a: Installing the metrics server
+
+Install a helm repo that contains the chart for the metrics server
+
+```
+helm repo add bitnami https://charts.bitnami.com/bitnami
+```
+
+Update the repo:
+```
+helm repo update
+```
+
+In the OCI Cloud Shell install the metrics server by typing
+
+helm install metrics-server bitnami/metrics-server --namespace kube-system --set apiService.create=true
+
+![image](https://user-images.githubusercontent.com/42166489/107946783-82daae80-6fb7-11eb-907b-d4d438c2e420.png)
+
+It will take a short time for the metrics server to start up, but you can check the progress using kubectl
+
+In the OCI Cloud Shell type
+```
+kubectl get deployments -n kube-system
+```
+
+Using the captured metrics
+Once the metrics server is running (it will have an AVAILABLE count of 1) you can get information on the state of the system
+Let's look at how the nodes in the cluster are doing. In the OCI Cloud Shell type
+
+```
+kubectl top nodes
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107946813-8bcb8000-6fb7-11eb-930f-06644c56e479.png)
+
+Note that like the other times we've used kubectl this uses the namespace configured as the default when you ran the create-namespace.sh command
+
+Let's have a look at what's happening in the kube-system namespace. In the OCI Cloud Shell type
+kubectl top pods -n kube-system
+
+![image](https://user-images.githubusercontent.com/42166489/107946852-94bc5180-6fb7-11eb-98e6-53c577109355.png)
+
+You can see in the output above that all of the pods are using very small amounts of CPU here, this is because we're not really putting any load on them. Let's run a script that will put load on the services to see what's happening.
+
+In the helidon-kubernetes project in the cloud-native-kubernetes/auto-scaling folder run the following. You must to replace here with the one for your ingress controller (see the expansion section above for details of how to get this if you've forgotten)
+
+Switch to the auto scaling directory
+```
+cd $HOME/helidon-kubernetes/cloud-native-kubernetes/auto-scaling
+```
+
+Start a load generator. In the OCI Cloud Shell (As usual replace with the IP address of the load balancer).
+
+```
+bash generate-load.sh <external IP> 0.1
+```
+
+Note that the 0.1 controls how long the script waits, depending on how fast things respond below you may need to adjust the rate up (fewer requests) or down (more requests) If you chose an especially powerful processor you may need to open another cloud window in your browser and run a second load in that as well, or adjust the CPU available to the pod.
+
+```
+cd $HOME/helidon-kubernetes/cloud-native-kubernetes/auto-scaling
+bash generate-load.sh 152.67.28.51 0.1
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107946882-a3a30400-6fb7-11eb-8802-4700470f5b0d.png)
+
+The script will just get the stock level data, attempting to do so about 10 times a second (the 0.1 above is the time in seconds to wait after the request returns). The returned data will be displayed in the […] (for clarity here it's been removed
+
+Open up a new window on the OCI console
+Open up the OCI Cloud shell in the new window
+
+Let the script run for about 75 seconds (the iteration counter reaches over 750) This will let the load statistics level out.
+
+This will have increased the load, to see the increased load
+In the new OCI Cloud Shell type
+
+```
+kubectl top pods
+```
+
+Notice that in this particular example the CPU here for the storefront is at 251m (your number may be different). This is actually the limit allowed in the storefront deployment.yaml file, which has a resource restriction of 250 milli CPU specified.
+
+If the load does not reach 250 then you may need to adjust the request rate, or open another cloud shell in a new browser tab / window and run another load generator to ensure you can hit the limit (and auto scaling will kick in once we've configured it).
+
+We can also get the current resource level for the container using kubectl and the jsonpath capability
+In the OCI Cloud Shell (substitute your storefront pod name) type
+
+```
+kubectl get pod storefront-79c465dc6b-x8fbl -o=jsonpath='{.spec.containers[0].resources.limits.cpu}'
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107946919-aef62f80-6fb7-11eb-89f3-4e798e1f53e2.png)
+
+In the OCI Cloud shell window running the load generator stop it using Control-C
+
+Configuring the autoscaler:
+
+That we have hit the limit is almost certainly a problem, it's quite likely that the performance of the service is limited out because of this. Of course it may be that you have made a deliberate decision to limit the service, possibly to avoid overloading the back end database (though as it's an ATP database it can scale automatically for you if the load gets high)
+
+To fix this problem we need to add more pods, but we don't want to do this by hand, that would mean we'd have to be monitoring the system all the time. Let's use a the Kubernetes autoscale functionality to do this for us
+
+Setup autoscale (normally of course this would be handled using modifications to the YAML file for the deployment)
+
+If your CPU load was not exceeding 125 then reduce the --cpu-percent setting to a lower number so that it's below the required level. For example if the CPU load for the storefront was not exceeding 50 (so 20% of the allowed load on a single pod) then a setting of --cpu-percent=15 will trigger a scaling.
+
+In the OCI Cloud Shell create an auto scaller
+kubectl autoscale deployment storefront --min=2 --max=5 --cpu-percent=25
+
+![image](https://user-images.githubusercontent.com/42166489/107947251-288e1d80-6fb8-11eb-9874-c0a306ef1ac2.png)
+
+The autoscaler will attempt to achieve a target CPU load of 25%, (or whatevery you used) adding or removing pods to the deployment as needed to meet that goal, but never going below two pods or above 5
+
+We can see what the system has found by looking in the Horizontal Pod Autoscalers
+
+In the OCI Cloud Shell type
+kubectl get horizontalpodautoscaler storefront
+
+Note that because we told the auto scaler that we wanted a minimum of 2 pods the REPLICAS has already increased to 2. Because this deployment is "behind" the storefront service the service will automatically arrange for the load to be balanced across both pods for us.
+
+Of course typing horizontalpodautoscaler takes some time, so kubectl has an alias setup for us, we can just type hpa instead, for example.
+
+A few points on the output The TARGET column tells us what the current load is first, this is the average across all the pods in the deployment, Then the target load the autoscaler will aim to achieve by adding or removing pods.
+You can get more detail on the autoscaler state
+
+Getting the autoscaler details. In the OCI Cloud Shell type
+kubectl describe hpa storefront
+
+![image](https://user-images.githubusercontent.com/42166489/107947279-317eef00-6fb8-11eb-809e-b9a07d878559.png)
+
+
+Now restart the load generator program. Note that you may need to change the sleep time from 0.1 to a different value if the load generated is not high enough to trigger an autoscale operation, but don't set it to low!
+
+In the OCI Cloud Shell where you were running the load balancer previously (substitute the IP address for the ingress for your cluster) If needed run multiple in different cloud shells.
+
+cd $HOME/helidon-kubernetes/cloud-native-kubernetes/auto-scaling
+bash generate-load.sh 152.67.28.51 0.1
+
+![image](https://user-images.githubusercontent.com/42166489/107947303-393e9380-6fb8-11eb-84ef-27bcd383917c.png)
+
+Let's check there is a load. In the OCI Cloud Shell type
+kubectl top pods
+
+Let's look at the autoscaler. In the OCI Cloud Shell type
+kubectl get horizontalpodautoscaler storefront
+
+Let's look at the autoscaler details. In the OCI Cloud Shell type
+kubectl describe hpa storefront
+
+Let's look at those pods. In the OCI Cloud Shell type
+```
+kubectl top pods
+```
+
+All 5 pods are running and the service is distributing the load amongst them. Actually some of the storefront pods above are probably still in their startup phase as I gathered the above data immediately after getting the auto scale description.
+
+Let's get the autoscaler summary again. In the OCI Cloud Shell type
+
+```
+kubectl get hpa storefront
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107947339-43609200-6fb8-11eb-9c03-dd4461da8323.png)
+
+Other cloud shell. While the pod was running the load was more hence was distributed among all..
+In the second scenario the pod was stopped so load was reduced.
+
+![image](https://user-images.githubusercontent.com/42166489/107947375-4c516380-6fb8-11eb-847e-84d83b01a089.png)
+
+We can see that the average load across the deployment is still over 25%, if is had not reached the maximum number of pods then the auto scaler would be trying to meet our goal of no more than 50% average load by adding additional pods.
+
+If you want you can also see the pods being added in the Kubernetes dashboard,
+
+Open the Kubernetes Dashboard
+Make sure you are in your namespace
+In the left menu Under workloads select Deployments then click on the storefront deployment
+In the Pods section you can see that in this case it's scaled to 4 pods.
+
+![image](https://user-images.githubusercontent.com/42166489/107947401-54a99e80-6fb8-11eb-834a-490af93caeda.png)
+
+![image](https://user-images.githubusercontent.com/42166489/107947410-58d5bc00-6fb8-11eb-9806-794c39a04e29.png)
+
+You can see the pod details by opening the replica set.
+
+![image](https://user-images.githubusercontent.com/42166489/107947426-5ffcca00-6fb8-11eb-9009-db187a15539f.png)
+
+In the load generator window(s) stop the script by typing Control-C.
+
+Note that the metrics server seems to operate on a decaying average basis, so stopping the load generating script will not immediately drop the per pod load. This means that it may take some time after stopping the load generator script for the autoscaler to start removing unneeded pods.
+
+The autoscaler tries not to "thrash" the system by starting and stopping pods all the time. Because of this it will only remove pods every few minutes rather than immediately the load becomes low, additionally it will also only remove a few pods at a time. The autoscaler documentation describes the algorythm.
+
+For now let's delete the autoscaler to we can proceed with the next part of the lab with a known configuration.
+
+In the OCI Cloud Shell type
+
+```
+kubectl delete hpa storefront
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107947452-67bc6e80-6fb8-11eb-9d89-45db42c84d26.png)
+
+Note that this just stops changes to the number of pods, any existing pods will remain, even if there are more (or less) than specified in the deployment document. Of course now the auto scaler has been deleted regardless of the load that number will no longer change automatically.
+
+To return to the numbers of replicas originally defined we'll use kubectl
+
+In the OCI Cloud Shell type
+
+```
+kubectl scale --replicas=1 deployment storefront
+```
+
+Saikat_Dey@cloudshell:auto-scaling (ap-mumbai-1)$ kubectl scale --replicas=1 deployment storefront
+deployment.apps/storefront scaled
+
+Now let's check what's happening
+
+In the OCI Cloud Shell type
+
+```
+kubectl get all pods
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107947483-72770380-6fb8-11eb-8c8a-177787be5480.png)
+
+Autoscaling on other metrics:
+
+We have here looked at how to use CPU and memory to determine when to autoscale, that may be a good solution, or it may not. Kubernetes autoscaling can support the use of other metrics to manage autoscaling.
+
+These other metrics can be other Kuberneties metrics (known as custom metrics) for example the number of requests to the ingress controller, or (with the provision of the Prometheus Adaptor (helm chart)) any metric that Prometheus gathers. This last is especially useful as it means you can autoscale on what are effectively business metrics.
+
+It's also possible to autoscale on metrics provides from outside Kubernetes (these are known as external metrics). this is only recommended as a last resort however due to the security implications, and custom metrics are preferred.
+Links: https://github.com/prometheus-community/helm-charts
+https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/#autoscaling-on-multiple-metrics-and-custom-metrics
+
+Autoscaler and rolling upgrades - The autoscaler will correctly operate in conjunction with rolling upgrades.
+
+### Cloud Native - Rolling Updates:
+
+One of the problems when deploying an application is how to update it while still delivering service, and perhaps more important (but usually given little consideration) how to revert the changes in the event that the update fails to work in some way.
+
+Changes by the way come in multiple areas, it could be application code changes (Kubernetes sees these as a change in the container image) or it could be a change in the configuration defining a deployment (and it's replica sets / pods)
+
+The update process for code changes involves using your development tooling to create a new container based on the changed code (You presumably have separate processes for managing your source code versions). As part of your container creation process you must give it a different version number so it's easy to identify which container comes from which version of your source code, and also to ensure you differentiate between different releases at the image level. You'd then update the service definition to use the new image by editing and applying the yaml file or using kubectl to directly change the container image.
+
+The update process for configuration changes is to modify the yaml file that defines your service, for example defining different volume mounts, and then applying the change, or to issue a kubectl command to directly update the change.
+
+For both approaches Kubernetes will keep track of the changes and will undertake a rolling upgrade strategy.
+
+As a general observation though it may be tempting to just go in and modify the configuration directly with kubectl … this is a bad thing to do, it's likely to lead to unrecorded changes in your configuration management system so in the event that you had to do a complete restart of the system changes manually done with kubectl are likely to be forgotten. It is strongly recommended that you make changes by modifying your yaml file, and that the yaml file itself has a versioning scheme so you can identify exactly what versions of the service a given yaml file version provides. If you must make changes using kubectl (say you need to make a minor change in a test environment) then as soon as you decide it should be permanent then make the corresponding change in the yaml file and do a rolling upgrade using the yaml file to ensure you are using the correct configuration (after all, you may have made a typo in either the kubectl or yaml file).
+
+How to do a rolling upgrade in our setup:
+So far we've been stopping our services (the undeploy.sh script deletes the deployments) and then creating new ones (the deploy.sh script applies the deployment configurations for us) This results in service down time, and we don't want that. But before we can switch to properly using rolling upgrades there are a few bits of configuration we should do
+Step 2a: Defining the rolling upgrade
+
+Kubernetes aims to keep a service running during the rolling upgrade, it does this by starting new pods to run the service, then stopping old ones once the new ones are ready. Through the magic of services and using labels as selectors the Kubernetes run time adds and removed pods from the service. This will work with a deployment whose replica sets only contain a single pod (the new pod will be started before the old one is stopped) but if your service contains multiple pods it will use some configuration rules to try and manage the process in a more balanced manner and sticking reasonably closely to the number of pods you've asked for (or the auto scaler has).
+
+We are going to once again edit the storefront-deployment.yaml file to give Kubernetes some rules to follow when doing a rolling upgrade. Importantly however we're going to edit a Copy of the file so we have a history.
+
+In the OCI Cloud Shell navigate to the folder $HOME/helidon-kubernetes
+
+Copy the storefront-deployment yaml file:
+
+```
+cp storefront-deployment.yaml storefront-deployment-v0.0.1.yaml
+```
+
+Edit the new file storefront-deployment-v0.0.1.yaml
+
+The current contents of the section of the file looks like this:
+
+![image](https://user-images.githubusercontent.com/42166489/107947720-ca156f00-6fb8-11eb-833e-781ebbe10bd8.png)
+
+Set the number of replicas to 4:
+After the replicas:4 line, add
+    strategy:
+      type: RollingUpdate
+
+Finally we're going to tell Kubernetes what limits we want to place on the rolling upgrade.
+    Under the type line above, and at the same indent add the following
+rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 1
+
+This limits the rollout process to having no more than 1 additional pods online above the normal replicas set, and only one pod below that specified in the replica set unavailable. So the roll out (in this case) allows us to have up to 5 pods running during the rollout and requires that at least 3 are running.
+
+Note that unless you have very specific reasons don't change the default settings for strategy type and maxSurge / minUnavailable. We are setting these for two reasons. First to show that the settings are available, and secondly for the purposes of this lab to show the roll out process in a way that let's us actually see what's happening by slowing things down (of course in a production you'd want it to run as fast as possible, so think about the settings used if you do override the defaults)
+
+The section of the file after the changes will look like this.
+
+![image](https://user-images.githubusercontent.com/42166489/107947745-d7caf480-6fb8-11eb-9819-3cfe756baf12.png)
+
+Save the changes.
+
+Applying the rollout strategy:
+
+To do the roll out we're just going to apply the new file. Kubernetes will compare that to the old config and update appropriately.
+
+Apply the new config
+```
+kubectl apply -f storefront-deployment-v0.0.1.yaml --record
+```
+
+deployment.apps/storefront configured. We can have a look at the status of the rollout
+
+```
+ kubectl rollout status deployment storefront
+```
+
+deployment "storefront" successfully rolled out
+
+If you get a message along the lines of Waiting for deployment "storefront" rollout to finish: 3 of 4 updated replicas are available... this just means that the roll out is still in progress, once it's complete you should see the success message.
+
+Let's also look at the history of this and previous roll outs:
+
+```
+kubectl rollout history deployment storefront
+```
+
+deployment.apps/storefront 
+REVISION  CHANGE-CAUSE
+1         kubectl apply --filename=storefront-deployment.yaml --record=true
+
+(The --record tells Kubernetes to keep track of the change)
+
+We can see that the previous state of the deployment resulted from us doing the initial apply. Note that the filename is specified in the rollout, as long as we version our file names we will be able to know exactly what configuration was applied to different versions of the deployment.
+
+One point to note here, these changes only modified the deployment roll out configuration, so there was no need for Kubernetes to actually restart any pods as those were unchanged, however additional pods may have needed to be started to meet the replica count.
+Making a change that updates the pods
+
+Of course normally you would make a change, test it and build it, then push to the registry, you would probably use some form of CI/CD tooling to manage the process, for example a pipeline built using the Oracle Developer Cloud Service (other options include the open source tools Jenkins / Hudson and Ansible).
+
+For this lab we are focusing on Helidon and Kubernetes, not the entire CI/CD chain so like any good cooking program we're going to use a v0.0.2 image that we created for you. For the purposes of this module the image is basically the same as the v0.0.1 version, except it reports it's version as 0.0.2
+
+Applying our new image
+
+To apply the new v0.0.2 image we need to upgrade the configuration again. As discussed above this we would normally and following best practice do this by creating a new version of the deployment yaml file (say storefront-deploymentv0.0.2.yaml to match the container and code versions)
+
+However … for the purpose of showing how this can be done using kubectl we are going to do this using the command line, not a configuration file change. This might be something you'd do in a test environment, but don't do it in a production environment or your change management processes will almost certainly end up damaged.
+
+![image](https://user-images.githubusercontent.com/42166489/107947772-e44f4d00-6fb8-11eb-85d7-5788b7d421b3.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
