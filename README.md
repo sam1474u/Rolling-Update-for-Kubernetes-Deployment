@@ -942,6 +942,339 @@ Get the status resource data
 curl -i -k -X GET https://<external IP>/sf/status
 ```
 
+![image](https://user-images.githubusercontent.com/42166489/107916911-177be700-6f8d-11eb-81f6-4ce4bfc2b123.png)
+
+Incase you dont remember your storefront pod will have a different id so use kubectl get pods to retrieve that.
+
+Execute these commands:
+```
+kubectl exec -it storefront-588b4d69db-w244b -- /bin/bash
+```
+
+You are now inside the container. Let's look atround. Inside the container type
+```
+ls /conf
+```
+
+Inside the container type
+```
+cat /conf/storefront-config.yaml
+```
+
+Exit the pod
+```
+exit
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107916926-1f3b8b80-6f8d-11eb-806f-b913fb17fec1.png)
+
+As expected we see the contents of our config firectory and the storefront-config.yaml. Let's use the dashboard to modify that data
+
+Open the dashboard
+Select your namespace in the selector on the upper left
+Click on Config Maps in the Config and Storage section of the left menu
+
+![image](https://user-images.githubusercontent.com/42166489/107916948-2a8eb700-6f8d-11eb-8cbf-03f9e8abda1e.png)
+
+Then click on our config map (sf-config-map) to see the details and contents.
+
+![image](https://user-images.githubusercontent.com/42166489/107916964-31b5c500-6f8d-11eb-90bf-6c2b9887ed5b.png)
+
+As we'd expect it has our contents (You may have a different storename than My Shop if you changed the storefront-config.yaml file before creating the config map)
+
+Click the Edit icon (upper right) dashboard-edit-icon to get an on-screen editor where we can change the yaml that represents the map. 
+
+![image](https://user-images.githubusercontent.com/42166489/107916991-3c705a00-6f8d-11eb-9ea0-027fc5c3bbb9.png)
+
+Locate the storename attribute in the data.storefront-config.yaml section.
+
+Now edit the text and change the text My Shop to something else, here I've changed it to Tims shop . Be sure to change only the My Shop text, not the quote characters or other things (you don't want to create corrupt YAML which will be rejected).
+
+![image](https://user-images.githubusercontent.com/42166489/107917011-44c89500-6f8d-11eb-9c1a-ce0ad9b9517f.png)
+
+Click on the Update button to save your changes.
+
+Now let's return to the pod and see what's happened
+
+Re-connect to the pod
+```
+kubectl exec -it storefront-588b4d69db-w244b -- /bin/bash
+```
+
+In the pod, run
+```
+cat /conf/storefront-config.yaml
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917030-4d20d000-6f8d-11eb-8f6c-0ab428b10fed.png)
+
+If we now get the status resource data again it's also updated
+Query the status:
+```
+curl -i -k -X GET https://<external IP>/sf/status
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917054-53af4780-6f8d-11eb-9790-d754a398e7eb.png)
+
+### Cloud Native - Health, Readines and liveness:
+
+First let's make sure that the service is running, (replace with the external ip address of the ingress)
+    In the OCI Cloud Shell
+```
+curl -i -X GET -u jack:password http://<External IP>:80/store/stocklevel
+```
+
+Lets look at the pods to check all is running fine:
+```
+kubectl get pods
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917086-5f027300-6f8d-11eb-8953-729fc7c01438.png)
+
+We're going to simulate a crash in our program, this will cause the container to exit, and Kubernetes will identify this and start a replacement container in the pod for us.
+
+Using the name of the storefront pod above let's connect to the container in the pod using kubectl:
+kubectl exec storefront-65bd698bb4-cq26l -ti -- /bin/bash
+
+Inside the pod simulate a major fault that causes a service failure by killing the process running our service :
+```
+kill -1 1
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917109-688bdb00-6f8d-11eb-9e36-4646dfc8ed56.png)
+
+Let's look at the pod details again:
+```
+kubectl get pods
+```
+
+Let's look at the logs (use your storefront pod id of course)
+```
+kubectl logs storefront-65bd698bb4-cq26l
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917294-b3a5ee00-6f8d-11eb-93b3-a9d92ca862c3.png)
+
+We now have mechanisms in place to restart a container if it fails, but it may be that the container does not actually fail, just that the program running in it ceases to behave properly, for example there is some kind of non fatal resource starvation such as a deadlock. In this case the pod cannot recognize the problem as the container is still running.
+
+Fortunately Kubernetes provides a mechanism to handle this as well. This mechanism is called Liveness probes, if a pod fails a liveness probe then it will be automatically restarted.
+
+You may recall in the Helidon labs (if you did them) we created a liveness probe, this is an example of Helidon is designed to work in cloud native environments.
+
+
+* Try getting the data
+* ```
+curl -i -k -X GET -u jack:password https://<External IP>/store/stocklevel
+```
+
+curl -i -k -X GET -u jack:password http://52.67.28.51/store/stocklevel
+
+## Liveness:
+
+1: Navigate to the $HOME/helidon-kubernetes folder
+```
+    cd $HOME/helidon-kubernetes
+```
+
+2: Stop the existing deployments
+```
+    bash undeploy.sh
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917390-e51eb980-6f8d-11eb-80e2-5f56921d9a76.png)
+
+Edit the file storefront-deployment.yaml using your prefered editor
+Search for the Liveness probes section. This is under the spec.template.spec.containers section
+
+![image](https://user-images.githubusercontent.com/42166489/107917418-ee0f8b00-6f8d-11eb-8b95-e0a49bd1c32e.png)
+
+As you can see this section has been commented out.
+
+On each line remove the # (only the first one, and only the # character, be sure not to remove any whitespace).
+Save the file
+The resulting section should look like this:
+
+![image](https://user-images.githubusercontent.com/42166489/107917443-f667c600-6f8d-11eb-89b1-f01fdada0be8.png)
+
+This is a pretty simple test to see if there is a running service, in this case we use the service to make an http get request (this is made by the framework and is done from outside the pod) on the 9080:/health/live url (we know it's on port 9080 as the port definition names it health-port). There are other types of liveness probe than just get requests, you can run a command in the container itself, or just see if it's possible to open a tcp/ip connection to a port in the container. Of course this is a simple definition, it doesn't look at the many options that are available.
+
+The first thing to say is that whatever steps your actual liveness test does it needs to be sufficient to detect service problems like deadlocks, but also to use as few resources as possible so the check itself doesn't become a major load factor.
+
+Let's look at some of these values.
+
+As it may take a while to start up the container, we specify and initialDelaySeconds of 120, Kubernetes won't start checking if the pod is live until that period is elapsed. If we made that to short then we may never start the container as Kubernetes would always determine it was not alive before the container had a chance to start up properly.
+
+The parameter timeoutSeconds specifies that for the http request to be considered failed it would not have responded in 5 seconds. As many http service implementations are initialized on first access we need to chose a value that is long enough for the framework to do it's lazy initialization.
+
+The parameter periodSeconds defines how often Kubernetes will check the container to see if it's alive and responding. This is a balance, especially if the liveness check involved significant resources (e.g. making a RDBMS call) You need to check often enough that a non responding container will be detected quickly, but not check so often that the checking process itself uses to many resources.
+
+Finally failureThreshold specifies how many consecutive failures are needed before it's deemed to have failed, in this case we need 3 failures to respond
+
+Whatever your actual implementation you need to carefully consider the values above. Get them wrong and your service may never be allowed to start, or problems may not be detected.
+
+Let's apply the changes we made in the deployment :
+
+Deploy the updated version
+```
+bash deploy.sh
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917481-01225b00-6f8e-11eb-9065-2ddc90f321e6.png)
+
+Note that as we have undeployed and then deployed again these are new pods and so the RESTART count is back to zero.
+
+If we look at the logs for the storefront before the liveness probe has started (so before the 120 seconds from container creation) we see that it starts as we expect it to. 
+Let's look at the logs:
+```
+kubectl logs storefront-5f7c84b85-8p6bx
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917553-1d25fc80-6f8e-11eb-94a0-30cc631d50a7.png)
+
+Run the kubectl command again.
+```
+kubectl logs storefront-5f7c84b85-8p6bx
+```
+
+You will see multiple entries like the one below:
+2020.01.02 16:21:11 INFO com.oracle.labs.helidon.storefront.health.LivenessChecker Thread[nioEventLoopGroup-3-1,10,main]: Not frozen, Returning alive status true, storename My Shop
+
+Look at the pods detailed info to check the state is fine :
+```
+kubectl describe pod
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917612-36c74400-6f8e-11eb-979d-6c7fd5b29d0e.png)
+
+It's started and no unexpected events!
+
+Now is the time to explain that Not frozen ... text in the status. To enable us to actually simulate the service having a deadlock or resource starvation problem there's a bit of a cheat in the storefront LivenessChecker code :
+```
+    @Override
+    public HealthCheckResponse call() {
+        // don't test anything here, we're just reporting that we are running, not that
+        // any of the underlying connections to thinks like the database are active
+
+        // if there is a file /frozen then just lock up for 60 seconds
+        // this let's us emulate a lockup which will trigger a pod restart
+        // if we have enabled liveliness testing against this API
+        if (new File("/frozen").exists()) {
+            log.info("/frozen exists, locking for " + FROZEN_TIME + " seconds");
+            try {
+                Thread.sleep(FROZEN_TIME * 1000);
+            } catch (InterruptedException e) {
+                // ignore for now
+            }
+            return HealthCheckResponse.named("storefront-live").up()
+                    .withData("uptime", System.currentTimeMillis() - startTime).withData("storename", storeName)
+                    .withData("frozen", true).build();
+        } else {
+            log.info("Not frozen, Returning alive status true, storename " + storeName);
+            return HealthCheckResponse.named("storefront-live").up()
+                    .withData("uptime", System.currentTimeMillis() - startTime).withData("storename", storeName)
+                    .withData("frozen", false).build();
+        }
+```
+
+Every time it's called it checks to see it a file names /frozen exists in the root directory of the container. If it does then it will do a delay (about 60 seconds) before returning the response. Basically this means that by connecting to the container and creating the /frozen file we can simulate the container having a problem. The Not Frozen... is just text in the log data so we can see what's happening. Of course you wouldn't do this in a production system!
+
+Let's see what happens in this case.
+
+First let's start following the logs of your pod. Run the following command (replace the pod Id with yours)
+```
+kubectl logs -f --tail=10 storefront-b44457b4d-29jr7
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917674-52cae580-6f8e-11eb-83ae-532ca9d711e0.png)
+
+You will see multiple entries like the one below:
+
+2020.01.02 16:21:11 INFO com.oracle.labs.helidon.storefront.health.LivenessChecker Thread[nioEventLoopGroup-3-1,10,main]: Not frozen, Returning alive status true, storename Saki Shop
+
+![image](https://user-images.githubusercontent.com/42166489/107917701-5c544d80-6f8e-11eb-9a3e-cc32f541529a.png)
+
+Look at the pods detailed info to check the state is fine :
+```
+kubectl describe pod storefront-5f7c84b85-8p6bx
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917723-637b5b80-6f8e-11eb-8cac-bfa6cf195f2d.png)
+
+It's started and no unexpected events!
+
+Now is the time to explain that Not frozen ... text in the status. To enable us to actually simulate the service having a deadlock or resource starvation problem there's a bit of a cheat in the storefront LivenessChecker code :
+Every time it's called it checks to see it a file names /frozen exists in the root directory of the container. If it does then it will do a delay (about 60 seconds) before returning the response. Basically this means that by connecting to the container and creating the /frozen file we can simulate the container having a problem. The Not Frozen... is just text in the log data so we can see what's happening. Of course you wouldn't do this in a production system!
+
+Let's see what happens in this case.
+
+First let's start following the logs of your pod. Run the following command (replace the pod Id with yours)
+```
+kubectl logs -f --tail=10 storefront-5f7c84b85-8p6bx
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917769-7a21b280-6f8e-11eb-91ea-4241617d86dd.png)
+
+Open new browser window or tab
+Go to your cloud account
+
+Once in the cloud account open an OCI Cloud Shell in the new window
+
+Log in to the your container and create the /frozen file (replace the pod Id with yours)
+```
+kubectl exec -ti storefront-b44457b4d-29jr7 -- /bin/bash
+touch /frozen
+```
+
+Go back to the window running the logs
+
+Kubernetes detected that the liveness probes were not responding in time, and after 3 failures it restarted the pod.
+In the logs we see the following 
+
+Other cloud shell:
+
+![image](https://user-images.githubusercontent.com/42166489/107917801-860d7480-6f8e-11eb-83b1-b95fdf1a6ed2.png)
+
+![image](https://user-images.githubusercontent.com/42166489/107917814-8a399200-6f8e-11eb-9d42-40011ca811a5.png)
+
+Kubectl tells us there's been a problem and a pod has done a restart for us (the kubectl connection to the pod will have terminated when the pod restarted)
+Check the pod status
+```
+kubectl get pods
+```
+
+Look at the deployment events for the pod
+```
+kubectl describe pod storefront-b44457b4d-29jr7
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107917842-91f93680-6f8e-11eb-925b-ffc56691411b.png)
+
+The pod became unhealthy, then the container was killed and a fresh new container restarted.
+(Leave the extra window open as you'll be using it again later).
+
+### Readiness:
+The first two probes determine if a pod is alive and running, but it doesn't actually report if it's able to process events. That can be a problem if for example a pod has a problem connecting to a backend service, perhaps there is a network configuration issue and the pods path to a back end service like a database is not available.
+
+In this situation restarting the pod / container won't do anything useful, it's not a problem with the container itself, but something outside the container, and hopefully once that problem is resolved the front end service will recover (it's it's been properly coded and doesn't crash, but in that case one of the other health mechanisms will kick in and restart it) BUT there is also no point in sending requests to that container as it can't process them.
+
+Kubernetes supports a readiness probe that we can call to see is the container is ready. If the container is not ready then it's removed from the set of available containers that can provide the service, and any requests are routed to other containers that can provide the service.
+
+Unlike a liveness probe, if a container fails it's not killed off, and calls to the readiness probe continue to be made, if the probe starts reporting the service in the container is ready then it's added back to the list of containers that can deliver the servcie and requests will be routed to it once more.
+
+Make sure you are in the folder $HOME/helidon-kubernetes
+Edit the file storefront-deployment.yaml
+Look for the section (just after the Liveness probe) where we define the readiness probe.
+
+![image](https://user-images.githubusercontent.com/42166489/107917907-b81ed680-6f8e-11eb-8529-6bc5d75590d9.png)
+
+
+
+
+
+
+
+
+
 
 
 
