@@ -719,6 +719,7 @@ Change the backend port to 80.
 ### Namespace, Services and Ingress rules:
 
 Run these commands-
+
 ```
 cd $HOME/helidon-kubernetes/base-kubernetes
 bash create-namespace.sh <your-initials>-helidon
@@ -726,11 +727,13 @@ kubectl get namespace
 ```
 
 If we look into the namespace we've just created we'll see it contains nothing yet:
+
 ```
 kubectl get all
 ```
 
 The servicesClusterIP.yaml file in the defines the cluster services for us. We can apply it to make the changes
+
 ```
 kubectl apply -f servicesClusterIP.yaml
 ```
@@ -746,6 +749,7 @@ kubectl get services -n ingress-nginx
 ```
 
 Let's use kubectl to confirm we have no rules yet
+
 ```
 kubectl get ingress
 ```
@@ -763,11 +767,13 @@ If you didn't write it down earlier find the external IP address the ingress con
 kubectl get service -n ingress-nginx
 
 We now have a working endpoint, let's try accessing it using curl - expect an error!
+
 ```
 curl -i -k -X GET https://<ip address>/sf
 ```
 
 If we tried to go to a URL that's not defined we will as expected get a 404 error:
+
 ```
 curl -i -k -X GET https://<ip address>/unknowningress
 ```
@@ -775,11 +781,13 @@ curl -i -k -X GET https://<ip address>/unknowningress
 ![image](https://user-images.githubusercontent.com/42166489/107913804-134ccb00-6f87-11eb-8672-85be64a6d722.png)
 
 Switch to the config files directory
+
 ```
 cd $HOME/helidon-kubernetes/configurations/stockmanagerconf
 ```
 
 Edit the file databaseConnectionSecret.yaml
+
 ```
 vi databaseConnectionSecret.yaml
 
@@ -794,6 +802,7 @@ cd $HOME/helidon-kubernetes/base-kubernetes
 ```
 
 Run the following command to create the secrets:
+
 ```
 bash create-secrets.sh
 kubectl get secrets
@@ -802,11 +811,13 @@ kubectl get secrets
 ![image](https://user-images.githubusercontent.com/42166489/107913837-28295e80-6f87-11eb-8494-33af0b8b7b5d.png)
 
 To see the content of a specific secret :
+
 ```
 kubectl get secret sm-conf-secure -o yaml
 ```
 
 To get the secret in plain test
+
 ```
 echo <your secret payload> | base64 -d -i -
 ```
@@ -821,16 +832,19 @@ Click on the eye icon next to the storefront-security.yaml to see the contents o
 ![image](https://user-images.githubusercontent.com/42166489/107913846-2fe90300-6f87-11eb-82fa-2582dcbf36ef.png)
 
 Run the script to create the config maps
+
 ```
 bash create-configmaps.sh
 ```
 
 To get the list of config maps we need to ask kubectl or look at the config maps in the dashboard:
+
 ```
 kubectl get configmaps
 ```
 
 We can get more details by getting the data in JSON or YAML, in this case I'm extracting it using YAML as that's the original data format:
+
 ```
 kubectl get configmap sf-config-map -o=yaml
 ```
@@ -840,10 +854,13 @@ kubectl get configmap sf-config-map -o=yaml
 The deploy.sh script just does a sequence of commands to apply the deployment configuration files, for example kubectl apply -f zipkin-deployment.yaml --record=true You could of course issues these commands by hand if you liked, but we're using a script here to save typo probems, and also because it's good practice to script this type of thing, so you know exactly the command that was run - which can be useful if you need to exactly reproduce it (which of course if you were deploying in a production environment you would!)
 
 Switch to the helidon-kubernetes directory:
+
 ```
 cd $HOME/helidon-kubernetes
 ```
+
 Now run the deploy.sh script
+
 ```
 bash deploy.sh
 ```
@@ -851,6 +868,7 @@ bash deploy.sh
 ![image](https://user-images.githubusercontent.com/42166489/107915873-55780b80-6f8b-11eb-9ed7-7b3e36a0a6d9.png)
 
 Now lets look at the logs of the pods you have launched (replace the ID shown here with the exact ID of your pod)
+
 ```
 kubectl logs --follow storefront-68bbb5dbd8-vp578
 ```
@@ -863,6 +881,7 @@ kubectl get services -n ingress-nginx
 ```
 
 Let's try to get some data - you might get an error (replace with the ingress controllers load ballancer you got earlier)
+
 ```
 curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
 ```
@@ -872,6 +891,7 @@ curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
 If you get 424 failed dependency or timeouts it's because the services are doing their lazy initialization, wait a minute or so and retry the request.
 
 Run : 
+
 ```
 kubectl get endpoints
 ```
@@ -883,6 +903,7 @@ storefront        10.244.0.14:8080,10.244.0.14:9080             15h
 zipkin            10.244.1.15:9411                            15h
 
 And also on the stockmanager pod, you also need to replace the pod id !
+
 ```
 kubectl logs stockmanager-d6cc5c9b7-bbjdp --tail=20
 ```
@@ -902,16 +923,23 @@ Updating your external configuration:
 We've mounted the sf-config-map (which contains the contents of storefront-config.yaml file) onto /conf. Let's use a command to connect to the running pod (remember your storefront pod will have a different id so use kubectl get pods to retrieve that) and see how it looks in there, then exit the connection
 
 Execute these commands :
+
+```
 kubectl exec -it storefront-588b4d69db-w244b -- /bin/bash
+```
 
 You are now inside the container. Let's look atround
 
 Inside the container type
+
+```
 ls /conf
 Inside the container type
 cat /conf/storefront-config.yaml
+```
 
 Exit the pod :
+
 ```
 exit
 ```
@@ -929,6 +957,7 @@ Select the most recent trace (click on it) and retrieve the data from that.
 ![image](https://user-images.githubusercontent.com/42166489/107916026-8e17e500-6f8b-11eb-85f7-0ef96938aa1e.png)
 
 Consult minimum change (replace with your address)
+
 ```
 curl -i -k -X GET https://<external IP>/sf/minimumChange
 ```
@@ -938,6 +967,7 @@ curl -i -k -X GET https://<external IP>/sf/minimumChange
 ### Updating your external configuration:
 
 Get the status resource data
+
 ```
 curl -i -k -X GET https://<external IP>/sf/status
 ```
@@ -947,21 +977,25 @@ curl -i -k -X GET https://<external IP>/sf/status
 Incase you dont remember your storefront pod will have a different id so use kubectl get pods to retrieve that.
 
 Execute these commands:
+
 ```
 kubectl exec -it storefront-588b4d69db-w244b -- /bin/bash
 ```
 
 You are now inside the container. Let's look atround. Inside the container type
+
 ```
 ls /conf
 ```
 
 Inside the container type
+
 ```
 cat /conf/storefront-config.yaml
 ```
 
 Exit the pod
+
 ```
 exit
 ```
@@ -997,11 +1031,13 @@ Click on the Update button to save your changes.
 Now let's return to the pod and see what's happened
 
 Re-connect to the pod
+
 ```
 kubectl exec -it storefront-588b4d69db-w244b -- /bin/bash
 ```
 
 In the pod, run
+
 ```
 cat /conf/storefront-config.yaml
 ```
@@ -1020,11 +1056,13 @@ curl -i -k -X GET https://<external IP>/sf/status
 
 First let's make sure that the service is running, (replace with the external ip address of the ingress)
     In the OCI Cloud Shell
+    
 ```
 curl -i -X GET -u jack:password http://<External IP>:80/store/stocklevel
 ```
 
 Lets look at the pods to check all is running fine:
+
 ```
 kubectl get pods
 ```
@@ -1037,6 +1075,7 @@ Using the name of the storefront pod above let's connect to the container in the
 kubectl exec storefront-65bd698bb4-cq26l -ti -- /bin/bash
 
 Inside the pod simulate a major fault that causes a service failure by killing the process running our service :
+
 ```
 kill -1 1
 ```
@@ -1044,11 +1083,13 @@ kill -1 1
 ![image](https://user-images.githubusercontent.com/42166489/107917109-688bdb00-6f8d-11eb-9e36-4646dfc8ed56.png)
 
 Let's look at the pod details again:
+
 ```
 kubectl get pods
 ```
 
 Let's look at the logs (use your storefront pod id of course)
+
 ```
 kubectl logs storefront-65bd698bb4-cq26l
 ```
@@ -1063,7 +1104,9 @@ You may recall in the Helidon labs (if you did them) we created a liveness probe
 
 
 * Try getting the data
-* ```
+* 
+
+```
 curl -i -k -X GET -u jack:password https://<External IP>/store/stocklevel
 ```
 
@@ -1072,11 +1115,13 @@ curl -i -k -X GET -u jack:password http://52.67.28.51/store/stocklevel
 ## Liveness:
 
 1: Navigate to the $HOME/helidon-kubernetes folder
+
 ```
     cd $HOME/helidon-kubernetes
 ```
 
 2: Stop the existing deployments
+
 ```
     bash undeploy.sh
 ```
@@ -1115,6 +1160,7 @@ Whatever your actual implementation you need to carefully consider the values ab
 Let's apply the changes we made in the deployment :
 
 Deploy the updated version
+
 ```
 bash deploy.sh
 ```
@@ -1125,6 +1171,7 @@ Note that as we have undeployed and then deployed again these are new pods and s
 
 If we look at the logs for the storefront before the liveness probe has started (so before the 120 seconds from container creation) we see that it starts as we expect it to. 
 Let's look at the logs:
+
 ```
 kubectl logs storefront-5f7c84b85-8p6bx
 ```
@@ -1132,6 +1179,7 @@ kubectl logs storefront-5f7c84b85-8p6bx
 ![image](https://user-images.githubusercontent.com/42166489/107917553-1d25fc80-6f8e-11eb-94a0-30cc631d50a7.png)
 
 Run the kubectl command again.
+
 ```
 kubectl logs storefront-5f7c84b85-8p6bx
 ```
@@ -1140,6 +1188,7 @@ You will see multiple entries like the one below:
 2020.01.02 16:21:11 INFO com.oracle.labs.helidon.storefront.health.LivenessChecker Thread[nioEventLoopGroup-3-1,10,main]: Not frozen, Returning alive status true, storename My Shop
 
 Look at the pods detailed info to check the state is fine :
+
 ```
 kubectl describe pod
 ```
@@ -1149,6 +1198,7 @@ kubectl describe pod
 It's started and no unexpected events!
 
 Now is the time to explain that Not frozen ... text in the status. To enable us to actually simulate the service having a deadlock or resource starvation problem there's a bit of a cheat in the storefront LivenessChecker code :
+
 ```
     @Override
     public HealthCheckResponse call() {
@@ -1181,6 +1231,7 @@ Every time it's called it checks to see it a file names /frozen exists in the ro
 Let's see what happens in this case.
 
 First let's start following the logs of your pod. Run the following command (replace the pod Id with yours)
+
 ```
 kubectl logs -f --tail=10 storefront-b44457b4d-29jr7
 ```
@@ -1193,7 +1244,8 @@ You will see multiple entries like the one below:
 
 ![image](https://user-images.githubusercontent.com/42166489/107917701-5c544d80-6f8e-11eb-9a3e-cc32f541529a.png)
 
-Look at the pods detailed info to check the state is fine :
+Look at the pods detailed info to check the state is fine:
+
 ```
 kubectl describe pod storefront-5f7c84b85-8p6bx
 ```
@@ -1208,6 +1260,7 @@ Every time it's called it checks to see it a file names /frozen exists in the ro
 Let's see what happens in this case.
 
 First let's start following the logs of your pod. Run the following command (replace the pod Id with yours)
+
 ```
 kubectl logs -f --tail=10 storefront-5f7c84b85-8p6bx
 ```
@@ -1220,6 +1273,7 @@ Go to your cloud account
 Once in the cloud account open an OCI Cloud Shell in the new window
 
 Log in to the your container and create the /frozen file (replace the pod Id with yours)
+
 ```
 kubectl exec -ti storefront-b44457b4d-29jr7 -- /bin/bash
 touch /frozen
@@ -1238,11 +1292,13 @@ Other cloud shell:
 
 Kubectl tells us there's been a problem and a pod has done a restart for us (the kubectl connection to the pod will have terminated when the pod restarted)
 Check the pod status
+
 ```
 kubectl get pods
 ```
 
 Look at the deployment events for the pod
+
 ```
 kubectl describe pod storefront-b44457b4d-29jr7
 ```
