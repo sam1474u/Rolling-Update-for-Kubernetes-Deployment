@@ -661,7 +661,9 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt
 ```
 
 Run the following command to save the certificate as a secret in the ingress-nginx namespace
+```
 kubectl create secret tls tls-secret --key tls.key --cert tls.crt -n ingress-nginx
+```
 
 ![image](https://user-images.githubusercontent.com/42166489/107912911-6faeeb00-6f85-11eb-9378-f7b7e1ddfbc4.png)
 
