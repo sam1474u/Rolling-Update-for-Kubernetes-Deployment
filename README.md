@@ -1,7 +1,66 @@
-# Rolling-Update-for-Kubernetes-Deployment
+# Rolling Update for Kubernetes Deployment
 Tutorial to Perform Rolling Update for Kubernetes Deployment
 
 ## Tenancy setup for Kubernetes Labs: Migration of Monolith to Cloud Native
+
+- Prerequisites
+These labs can be run in many different ways, but in all cases you will need access to a Oracle Cloud Tenancy and be signed in to it.
+
+Please look at the instructions in the Prerequisites section for details of how to sign up for a free trial tenancy and how to log into it. If you already have access to a tenancy (you may be in an instructor led lab, or have a pre-existing tenancy) then go direct to Prerequisites Step 2 which covers how to login to the tenancy.
+
+- Introduction
+In this series of labs we will focus on the specific features of Kubernetes to run Microservices. These labs use a pre-built set of docker images but you can if you did the Helidon and Docker modules you can use the images you created there if you wish.
+
+- Lab conventions
+We have used a few layout tricks to make the reading of this tutorial more intuitive :
+
+If you see a "Bullet" sign, this means you need to perform some sort of action. This can be
+Opening a window and navigating to some point in a file system
+Executing some command on the command line of a terminal window :
+For example : ls -al
+
+- Setup your tenancy
+You need to perform some initial steps to setup your tenancy so it's in the state expected by the various scripts and Docker images you will be using, for example you need to setup an Autonomous Data Processing database. Follow the instructions in the "Tenancy Setup for Kubernetes Labs" on the menu.
+
+- Create your Kubernetes cluster
+You will of course need a cluster to work with. Follow the instructions in this module to do that.
+
+- Cloud shell and setup
+You will be using the OCI Cloud Shell to execute commands and scripts during these labs.
+
+You need to follow the cloud shell setup instructions to download the scripts and template files into the cloud shell before you continue with the labs.
+
+- Basic Kubernetes - Setting up your cluster and running your services
+This section covers how to run the docker images in kubenetes, how to use Kubernetes secrets to hold configuration and access information, how to use an ingress to expose your application on a web port. Basically this covers how to make your docker based services run in in a Kubernetes cluster.
+
+We also look at using Helm to install Kubernetes "infrastructure" such as the ingress server
+
+- Cloud Native with Kubernetes
+Is it running, and what to do if it isn't
+Kubernetes doesn't just provide a platform to run containers in, it also provides a base for many other things including a comprehensive service availability framework which handles monitoring containers and services to see if they are still running, are still alive and are capable of responding to requests.
+
+- Horizontal and Auto Scaling
+Kubernetes also supports horizontal scaling of services, enabling multiple instances of a service to run with the load being shared amongst all of them.
+
+This horizontal scaling lab shows how you can manually control the number of instances.
+
+Horizontal scaling provides you with a manual process to control how many instances of a microservice you have running, but Kubernetes also offers a mechanism to automatically change the number of instances.
+
+This auto scaling labs shows how you can have Kubernetes automatically scale the number of instances for you.
+
+- Rolling out deployment updates
+Commonly when a service is deployed it will be updated, Kubernetes provides support for performing rolling upgrades, ensuring that the service continues running during the upgrade. Built into this are easy ways to reverse a deployment roll out to one of it's previous states.
+
+- Further Information
+For links to useful web pages and other information that I found while writing these labs see the further information on Kubernetes section
+
+
+
+
+
+This page explains the steps to set up your Oracle Cloud Tenancy so you are ready to run the Kubernetes modules.
+
+If you have completed the Helidon labs then you will have already setup the compartment and ATP database, so you can return to the main lab.
 
 ### Step 1: Create the workshops compartment
 
