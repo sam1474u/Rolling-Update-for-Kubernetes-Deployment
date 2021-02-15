@@ -159,6 +159,7 @@ If it works OK you will see a set of messages in the Script Output section of th
 Now we Create your Kubernetes cluster lab
 
 ### Step 4: Creating your Kubernetes cluster
+
 Navigate to the Managed Kubernetes dashboard
 Log into the OCI Console
 Once on the OCI infrastructure page, click on the "Hamburger" menu
@@ -206,6 +207,7 @@ The state will be "Creating" for a few minutes (usually 3-4 mins)
 We can move on to the Cloud Shell Setup for the Kubernetes Labs module while the cluster continues to be provisioned.
 
 ### Step 5: Kubernetes labs - Cloud Shell setup (Accessing the cloud shell)
+
 The OCI Cloud Shell is accessible through the Oracle Cloud GUI, and has a number of elements set up out of the box, like the Oracle Cloud Command Line Interface, and it also has quite some useful command-line tools pre-installed, like git, docker, kubectl, helm and more.
 
 To access the OCI Cloud Shell, you can use the native browser on your laptop (you don't need to use the Linux desktop VM anymore).
@@ -279,7 +281,7 @@ cp $HOME
 ```
 Save the changes to the file.
 
-### Step 6: Configure the Helm repository:
+### Step 6: Configure the Helm repository
 
 Helm is the tool we will be using to install standard software into Kubernetes. While it's possible to load software into Kubernetes by hand Helm makes it much easier as it has pre-defined configurations (called charts) that it pulls from an internet based repository.
 
@@ -334,6 +336,7 @@ If it works OK you will see a set of messages in the Script Output section of th
 Now we Create your Kubernetes cluster lab
 
 ### Step 7: Creating your Kubernetes cluster
+
 Navigate to the Managed Kubernetes dashboard
 Log into the OCI Console
 Once on the OCI infrastructure page, click on the "Hamburger" menu
@@ -381,6 +384,7 @@ The state will be "Creating" for a few minutes (usually 3-4 mins)
 We can move on to the Cloud Shell Setup for the Kubernetes Labs module while the cluster continues to be provisioned.
 
 ### Step 8: Kubernetes labs - Cloud Shell setup (Accessing the cloud shell)
+
 The OCI Cloud Shell is accessible through the Oracle Cloud GUI, and has a number of elements set up out of the box, like the Oracle Cloud Command Line Interface, and it also has quite some useful command-line tools pre-installed, like git, docker, kubectl, helm and more.
 
 To access the OCI Cloud Shell, you can use the native browser on your laptop (you don't need to use the Linux desktop VM anymore).
@@ -406,7 +410,7 @@ To maximise the size of the OCI Cloud Shell window, click the "Arrows" button on
 
 ![image](https://user-images.githubusercontent.com/42166489/107868894-42433e00-6eae-11eb-98ff-7bd7444cd864.png)
 
-### Step 9:Downloading the database wallet file:
+### Step 9:Downloading the database wallet file
 
 We will use the OCI Cloud Shell to download the database wallet file.
 
@@ -454,7 +458,7 @@ cp $HOME
 ```
 Save the changes to the file.
 
-### Step 10: Configure the Helm repository:
+### Step 10: Configure the Helm repository
 
 Helm is the tool we will be using to install standard software into Kubernetes. While it's possible to load software into Kubernetes by hand Helm makes it much easier as it has pre-defined configurations (called charts) that it pulls from an internet based repository.
 
@@ -482,7 +486,7 @@ Update Complete. ⎈Happy Helming!⎈
 Saikat_Dey@cloudshell:~ (ap-mumbai-1)$ 
 ```
 
-### Step 11:Getting your cluster access details:
+### Step 11: Getting your cluster access details
 
 Open the OCI Console UI
 Open the "Hamburger" menu on the upper left scroll down to the Solutions and Platform section
@@ -620,7 +624,7 @@ kubernetes-dashboard   LoadBalancer   10.96.22.254   152.67.31.203   443:30576/T
 
 The IP address of the load balancer is in the EXTERNAL-IP column. Note that this can take a few minutes to be assigned, so it it's listed as just re-run the kubectl get command after a short while
 
-### Step 12:Looking around the dashboard.
+### Step 12: Looking around the dashboard
 
 Open a web browser and using the IP address you got above and go to
 ```
@@ -776,7 +780,7 @@ Change the backend port to 80.
 
 ![image](https://user-images.githubusercontent.com/42166489/107913642-ce289900-6f86-11eb-8cf1-c8ecaaaa2c95.png)
 
-### Namespace, Services and Ingress rules:
+### Namespace, Services and Ingress rules
 
 Run these commands-
 
@@ -1024,7 +1028,7 @@ curl -i -k -X GET https://<external IP>/sf/minimumChange
 
 ![image](https://user-images.githubusercontent.com/42166489/107916152-d33c1700-6f8b-11eb-9250-2fe3f12b93fb.png)
 
-### Updating your external configuration:
+### Updating your external configuration
 
 Get the status resource data
 
@@ -1368,7 +1372,8 @@ kubectl describe pod storefront-b44457b4d-29jr7
 The pod became unhealthy, then the container was killed and a fresh new container restarted.
 (Leave the extra window open as you'll be using it again later).
 
-### Readiness:
+### Readiness
+
 The first two probes determine if a pod is alive and running, but it doesn't actually report if it's able to process events. That can be a problem if for example a pod has a problem connecting to a backend service, perhaps there is a network configuration issue and the pods path to a back end service like a database is not available.
 
 In this situation restarting the pod / container won't do anything useful, it's not a problem with the container itself, but something outside the container, and hopefully once that problem is resolved the front end service will recover (it's it's been properly coded and doesn't crash, but in that case one of the other health mechanisms will kick in and restart it) BUT there is also no point in sending requests to that container as it can't process them.
@@ -1578,7 +1583,7 @@ kubectl apply -f storefront-deployment.yaml
 
 There isn't anything obvious happening here from a user perspective, but now if there is a problem with the deployment the liveness probe will pick it up a lot faster.
 
-### Cloud Native - Horizontal Scaling manually:
+### Cloud Native - Horizontal Scaling manually
 
 Kubernetes has built in support for easily managing the horizontal scaling of services.
 
@@ -1949,7 +1954,7 @@ https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkth
 
 Autoscaler and rolling upgrades - The autoscaler will correctly operate in conjunction with rolling upgrades.
 
-### Cloud Native - Rolling Updates:
+### Cloud Native - Rolling Updates
 
 One of the problems when deploying an application is how to update it while still delivering service, and perhaps more important (but usually given little consideration) how to revert the changes in the event that the update fails to work in some way.
 
