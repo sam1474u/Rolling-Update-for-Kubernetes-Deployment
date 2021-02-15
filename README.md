@@ -273,7 +273,7 @@ If it works OK you will see a set of messages in the Script Output section of th
 
 Now we Create your Kubernetes cluster lab
 
-### Step 4: Creating your Kubernetes cluster
+### Step 7: Creating your Kubernetes cluster
 Navigate to the Managed Kubernetes dashboard
 Log into the OCI Console
 Once on the OCI infrastructure page, click on the "Hamburger" menu
@@ -320,7 +320,7 @@ The state will be "Creating" for a few minutes (usually 3-4 mins)
 
 We can move on to the Cloud Shell Setup for the Kubernetes Labs module while the cluster continues to be provisioned.
 
-### Step5: Kubernetes labs - Cloud Shell setup (Accessing the cloud shell)
+### Step 8: Kubernetes labs - Cloud Shell setup (Accessing the cloud shell)
 The OCI Cloud Shell is accessible through the Oracle Cloud GUI, and has a number of elements set up out of the box, like the Oracle Cloud Command Line Interface, and it also has quite some useful command-line tools pre-installed, like git, docker, kubectl, helm and more.
 
 To access the OCI Cloud Shell, you can use the native browser on your laptop (you don't need to use the Linux desktop VM anymore).
@@ -346,7 +346,7 @@ To maximise the size of the OCI Cloud Shell window, click the "Arrows" button on
 
 ![image](https://user-images.githubusercontent.com/42166489/107868894-42433e00-6eae-11eb-98ff-7bd7444cd864.png)
 
-Downloading the database wallet file:
+### Step 9:Downloading the database wallet file:
 
 We will use the OCI Cloud Shell to download the database wallet file.
 
@@ -394,7 +394,7 @@ cp $HOME
 ```
 Save the changes to the file.
 
-### Step 6: Configure the Helm repository:
+### Step 10: Configure the Helm repository:
 
 Helm is the tool we will be using to install standard software into Kubernetes. While it's possible to load software into Kubernetes by hand Helm makes it much easier as it has pre-defined configurations (called charts) that it pulls from an internet based repository.
 
@@ -422,7 +422,7 @@ Update Complete. ⎈Happy Helming!⎈
 Saikat_Dey@cloudshell:~ (ap-mumbai-1)$ 
 ```
 
-Getting your cluster access details:
+### Step 11:Getting your cluster access details:
 
 Open the OCI Console UI
 Open the "Hamburger" menu on the upper left scroll down to the Solutions and Platform section
@@ -470,7 +470,6 @@ helm install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --na
 Note that Helm does all the work needed here, it creates the service, deployment, replica set and pods for us and starts things running. Unless you need a very highly customised configuration using helm is way simpler than setting each of these individual elements up yourself.
 
 Check the status of the Helm deployment
-
 ```
 helm list --namespace kube-system
 ```
@@ -561,7 +560,7 @@ kubernetes-dashboard   LoadBalancer   10.96.22.254   152.67.31.203   443:30576/T
 
 The IP address of the load balancer is in the EXTERNAL-IP column. Note that this can take a few minutes to be assigned, so it it's listed as just re-run the kubectl get command after a short while
 
-Looking around the dashboard.
+### Step 12:Looking around the dashboard.
 
 Open a web browser and using the IP address you got above and go to
 ```
@@ -648,7 +647,9 @@ For this lab we're going to use an nginx based Ingress controller. The nginx bas
 Firstly we need to create a namespace for the ingress controller.
 
 Run the following command :
+```
 kubectl create namespace ingress-nginx
+```
 
 Output:     namespace/ingress-nginx created
 
@@ -666,6 +667,291 @@ kubectl create secret tls tls-secret --key tls.key --cert tls.crt -n ingress-ngi
 ```
 
 ![image](https://user-images.githubusercontent.com/42166489/107912911-6faeeb00-6f85-11eb-9378-f7b7e1ddfbc4.png)
+
+Add the Kubernetes nginx based ingress repo to helm
+```
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+```
+
+Update the repositories with the new repo
+```
+helm repo update
+```
+
+Run the following command to install ingress-nginx using Helm 3:
+helm install ingress-nginx ingress-nginx/ingress-nginx -n ingress-nginx --version 3.10.1 --set rbac.create=true --set controller.service.annotations."service\.beta\.kubernetes\.io/oci-load-balancer-tls-secret"=tls-secret --set controller.service.annotations."service\.beta\.kubernetes\.io/oci-load-balancer-ssl-ports"=443
+
+![image](https://user-images.githubusercontent.com/42166489/107913552-a3d6db80-6f86-11eb-9fbd-c92144dea5de.png)
+
+This will install the ingress controller in the default namespace.
+
+Because the Ingress controller is a service, to make it externally available it still needs a load balancer with an external port. Load balancers are not provided by Kubernetes, instead Kubernetes requests that the external framework delivered by the environment provider create a load balancer. Creating such a load balancer may take some time for the external framework to provide.
+
+To see the progress in creating the Ingress service type :
+```
+kubectl --namespace ingress-nginx get services -o wide ingress-nginx-controller
+```
+
+Saikat_Dey@cloudshell:~ (ap-mumbai-1)$ kubectl --namespace ingress-nginx get services -o wide ingress-nginx-controller
+NAME                       TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE     SELECTOR
+ingress-nginx-controller   LoadBalancer   10.96.176.225   <pending>     80:30682/TCP,443:32125/TCP   5m56s   app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-nginx
+
+Locate the Resources section on the lower left side.
+
+Click on the Listeners option.
+
+![image](https://user-images.githubusercontent.com/42166489/107913566-ad604380-6f86-11eb-802b-baad61dff755.png)
+
+Click on the Listeners option and select Edit.
+
+![image](https://user-images.githubusercontent.com/42166489/107913585-b5b87e80-6f86-11eb-9e48-2508ae66eed5.png)
+
+We need to change the port.
+In the popup locate the BackendSet option, click on it and select the TCP-80 option
+
+![image](https://user-images.githubusercontent.com/42166489/107913605-c0731380-6f86-11eb-8e10-55d16d7112a5.png)
+
+Click the Update Listener.
+Change the backend port to 80.
+
+![image](https://user-images.githubusercontent.com/42166489/107913642-ce289900-6f86-11eb-8cf1-c8ecaaaa2c95.png)
+
+### Namespace, Services and Ingress rules:
+
+Run these commands-
+```
+cd $HOME/helidon-kubernetes/base-kubernetes
+bash create-namespace.sh <your-initials>-helidon
+kubectl get namespace
+```
+
+If we look into the namespace we've just created we'll see it contains nothing yet:
+```
+kubectl get all
+```
+
+The servicesClusterIP.yaml file in the defines the cluster services for us. We can apply it to make the changes
+```
+kubectl apply -f servicesClusterIP.yaml
+```
+
+To see the services we can use kubectl :
+```
+kubectl get services
+```
+
+Let's look at the Ingress services
+```
+kubectl get services -n ingress-nginx
+```
+
+Let's use kubectl to confirm we have no rules yet
+```
+kubectl get ingress
+```
+
+Let's create the Ingress rules by applying the Ingress Config file :
+
+```
+kubectl apply -f ingressConfig.yaml
+kubectl get ingress
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107913664-d84a9780-6f86-11eb-83c7-7666dd5674c7.png)
+
+If you didn't write it down earlier find the external IP address the ingress controller is running on :
+kubectl get service -n ingress-nginx
+
+We now have a working endpoint, let's try accessing it using curl - expect an error!
+```
+curl -i -k -X GET https://<ip address>/sf
+```
+
+If we tried to go to a URL that's not defined we will as expected get a 404 error:
+```
+curl -i -k -X GET https://<ip address>/unknowningress
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107913804-134ccb00-6f87-11eb-8672-85be64a6d722.png)
+
+Switch to the config files directory
+```
+cd $HOME/helidon-kubernetes/configurations/stockmanagerconf
+```
+
+Edit the file databaseConnectionSecret.yaml
+```
+vi databaseConnectionSecret.yaml
+
+url: jdbc:oracle:thin:@<database connection name>?TNS_ADMIN=./Wallet_ATP
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107913824-1fd12380-6f87-11eb-9ffd-876692cb7c0d.png)
+
+Switch back to the scripts directory
+```
+cd $HOME/helidon-kubernetes/base-kubernetes
+```
+
+Run the following command to create the secrets:
+```
+bash create-secrets.sh
+kubectl get secrets
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107913837-28295e80-6f87-11eb-8494-33af0b8b7b5d.png)
+
+To see the content of a specific secret :
+```
+kubectl get secret sm-conf-secure -o yaml
+```
+
+To get the secret in plain test
+```
+echo <your secret payload> | base64 -d -i -
+```
+
+In the dashboard UI
+
+Chose your namespace in the namespace selector (upper left) tg-helidon in my case, but yours may differ
+Click on the Secrets choice in the Config and Store section of the left hand menu.
+Select the sf-conf-secure entry to see the list of files in the secret
+Click on the eye icon next to the storefront-security.yaml to see the contents of the secret.
+
+![image](https://user-images.githubusercontent.com/42166489/107913846-2fe90300-6f87-11eb-82fa-2582dcbf36ef.png)
+
+Run the script to create the config maps
+```
+bash create-configmaps.sh
+```
+
+To get the list of config maps we need to ask kubectl or look at the config maps in the dashboard:
+```
+kubectl get configmaps
+```
+
+We can get more details by getting the data in JSON or YAML, in this case I'm extracting it using YAML as that's the original data format:
+```
+kubectl get configmap sf-config-map -o=yaml
+```
+
+### Deploying the actual microservices
+
+The deploy.sh script just does a sequence of commands to apply the deployment configuration files, for example kubectl apply -f zipkin-deployment.yaml --record=true You could of course issues these commands by hand if you liked, but we're using a script here to save typo probems, and also because it's good practice to script this type of thing, so you know exactly the command that was run - which can be useful if you need to exactly reproduce it (which of course if you were deploying in a production environment you would!)
+
+Switch to the helidon-kubernetes directory:
+```
+cd $HOME/helidon-kubernetes
+```
+Now run the deploy.sh script
+```
+bash deploy.sh
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107915873-55780b80-6f8b-11eb-9ed7-7b3e36a0a6d9.png)
+
+Now lets look at the logs of the pods you have launched (replace the ID shown here with the exact ID of your pod)
+```
+kubectl logs --follow storefront-68bbb5dbd8-vp578
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107915888-5f017380-6f8b-11eb-8d9b-8e628574d0b0.png)
+
+If you can't remember it get the external IP address of the load balancer
+```
+kubectl get services -n ingress-nginx
+```
+
+Let's try to get some data - you might get an error (replace with the ingress controllers load ballancer you got earlier)
+```
+curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107915931-67f24500-6f8b-11eb-92a7-8a29e7baf64b.png)
+
+If you get 424 failed dependency or timeouts it's because the services are doing their lazy initialization, wait a minute or so and retry the request.
+
+Run : 
+```
+kubectl get endpoints
+```
+
+(ap-mumbai-1)$ kubectl get endpoints
+NAME           ENDPOINTS                                AGE
+stockmanager    10.244.0.140:8081,10.244.0.140:9081          15h
+storefront        10.244.0.14:8080,10.244.0.14:9080             15h
+zipkin            10.244.1.15:9411                            15h
+
+And also on the stockmanager pod, you also need to replace the pod id !
+```
+kubectl logs stockmanager-d6cc5c9b7-bbjdp --tail=20
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107915949-717bad00-6f8b-11eb-9d86-b85ff47a2750.png)
+
+Open your browser
+
+Go to the ingress end point for your cluster, for example http://<external IP>/zipkin (replace with your ingress controllers Load balancer IP address)
+
+![image](https://user-images.githubusercontent.com/42166489/107915965-78a2bb00-6f8b-11eb-80d7-caebc87c3c3c.png)
+
+Click the Run Query button to get the traces list
+
+Updating your external configuration:
+
+We've mounted the sf-config-map (which contains the contents of storefront-config.yaml file) onto /conf. Let's use a command to connect to the running pod (remember your storefront pod will have a different id so use kubectl get pods to retrieve that) and see how it looks in there, then exit the connection
+
+Execute these commands :
+kubectl exec -it storefront-588b4d69db-w244b -- /bin/bash
+
+You are now inside the container. Let's look atround
+
+Inside the container type
+ls /conf
+Inside the container type
+cat /conf/storefront-config.yaml
+
+Exit the pod :
+```
+exit
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107915977-7fc9c900-6f8b-11eb-97a4-c71cf2bf1451.png)
+
+Open your browser
+
+Go to the ingress end point for your cluster, for example http://<external IP>/zipkin (replace with your ingress controllers Load balancer IP address)
+
+![image](https://user-images.githubusercontent.com/42166489/107916007-87896d80-6f8b-11eb-83b3-0297541baec4.png)
+
+Select the most recent trace (click on it) and retrieve the data from that.
+
+![image](https://user-images.githubusercontent.com/42166489/107916026-8e17e500-6f8b-11eb-85f7-0ef96938aa1e.png)
+
+Consult minimum change (replace with your address)
+```
+curl -i -k -X GET https://<external IP>/sf/minimumChange
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107916152-d33c1700-6f8b-11eb-9250-2fe3f12b93fb.png)
+
+### Updating your external configuration:
+
+Get the status resource data
+```
+curl -i -k -X GET https://<external IP>/sf/status
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
