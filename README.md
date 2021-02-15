@@ -71,6 +71,7 @@ Scroll down the list to the Governance and Administration section
 Under the Identity option chose Compartments we should see a screen that looks like this :
 
 ![image](https://user-images.githubusercontent.com/42166489/107868669-335b8c00-6eac-11eb-9f52-618fbe25a6bd.png)
+
 Click the Create Compartment button
 
 Provide a name, description
