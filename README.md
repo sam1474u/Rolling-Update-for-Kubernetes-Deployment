@@ -1995,6 +1995,247 @@ However … for the purpose of showing how this can be done using kubectl we are
 ![image](https://user-images.githubusercontent.com/42166489/107947772-e44f4d00-6fb8-11eb-85d7-5788b7d421b3.png)
 
 
+In the OCI cloud shell Execute the command
+
+```
+kubectl set image deployment storefront storefront=fra.ocir.io/oractdemeabdmnative/h-k8s_repo/storefront:0.0.2 --record
+```
+
+Let's look at the status of our setup during the roll out
+
+```
+kubectl get all
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948128-6f304780-6fb9-11eb-885b-33df249a6c71.png)
+
+We're going to look at these in a different order to the output
+
+Firstly the deployments info. We can see that 3 out of 4 pods are available, this is because we specified a maxUnavailable of 1, so as we have 4 replicas we must always have 3 of them available.
+
+If we look at the replica sets we seem something unusual. There are two replica sets for the storefront. the original replica set (storefront-5f777cb4f5z) has 3 pods available and running, one of them was stopped as we allow one a maxUnavailable of 1. There is however an additional storefront replica set storefront-79d7d954d6 This has 2 pods in it, at the time the data was gathered neither of them was ready. But why 2 pods when we'd only specified a surge over the replicas count of 1 pod ? That's because we have one pod count "available" to us from the surge, and another "available" to us because we're allowed to kill of one pod below the replicas count, making a total of two new pods that can be started.
+
+Finally if we look at the pods themselves we see that there are five storefront pods. A point on pod naming, the first part of the pod name is actually the replica set the pod is in, so the three pods starting storefront-5f777cb4f5- are actually in the replic set storefront-5f777cb4f5 (the old one) and the two pods starting storefront-79d7d954d6- are in the storefront-79d7d954d6 replica set (the new one)
+
+Basically what Kuberntes has done is created a new replica set and started some new pods in it by adjusting the number of pod replicas in each set, maintaining the overall count of having 3 pods available at all times, and only one additional pod over the replica count set in the deployment. Over time as those new pods come online in the new replica set and pass their readiness test, then they can provide the service and the old replica set will be reduced by one pod, allowing another new pod to be started. At all times there are 3 pods running.
+
+Rerun the status command a few times to see the changes
+
+```
+kubectl get all
+```
+
+If we look at the output again we can see the progress (note that the exact results will vary depending on how long after the previous kubectl get all command you ran this one).
+
+Rerun the status command a few times to see the changes
+```
+kubectl get all
+```
+
+Kubectl provides an easier way to look at the status of our rollout
+
+```
+kubectl rollout status deployment storefront
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948161-77888280-6fb9-11eb-8b1f-7ec9d25cf43a.png)
+
+Let's also look at the history of this and previous roll outs:
+
+```
+kubectl rollout history deployment storefront
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948175-7f482700-6fb9-11eb-8f24-dbb85bd0cf90.png)
+
+Kubectl provides us with a monitor which updates over time. Once all of the deployment is updated then kubectl returns.
+
+During the rollout if you had accessed the status page for the storefront (on /sf/status) you would sometimes have got a version 0.0.1 in the response, and other times 0.0.2 This is because during the rollout there are instances of both versions running.
+
+If we look at the setup now we can see that the storefront is running only the new pods, and that there are 4 pods providing the service.
+
+```
+kubectl get all
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948201-896a2580-6fb9-11eb-8bfc-9d2ee5b6c7eb.png)
+
+One important point is that you'll see that the old replica set is still around, even though it hasn't got any pods assigned to it. This is because it still holds the configuration that was in place before if we wanted to rollback (we'll see this later)
+
+if we now look at the history we see that there have been two sets of changes
+
+```
+kubectl rollout history deployment storefront
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948221-90913380-6fb9-11eb-87a1-ab58547a535d.png)
+
+Note that to get the detail of the change you have to use the --record flag
+
+Let's check on our deployment to make sure that the image is the v0.0.2 we expect
+
+```
+kubectl describe deployment storefront
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948249-98e96e80-6fb9-11eb-8dcd-55f24c13b1b2.png)
+
+![image](https://user-images.githubusercontent.com/42166489/107948260-9c7cf580-6fb9-11eb-9457-65e188666a4e.png)
+
+We see the usual deployment info, the Image is indeed the new one we specified (in this case fra.ocir.io/oractdemeabdmnative/h-k8s_repo/storefront:0.0.2) and the events log section shows us the various stages of rolling out the update.
+
+We should of course check that our update is correctly delivering a service (replace the IP address with one for your service)
+
+```
+curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
+curl -i -k -X GET -u jack:password https://152.67.28.51/store/stocklevel
+```
+
+Now let's check the output from the StatusResource (again replace the IP address with the one for your service)
+
+```
+curl -i -k -X GET https://<external IP>/sf/status
+```
+
+Now the rollout has completed and all the instances are running the updated image as expected it's reporting version 0.0.2
+
+If you had checked this during the rollout you would have got 0.0.1 or 0.0.2 versions returned depending on which pod you connected to and what version it was running.
+
+![image](https://user-images.githubusercontent.com/42166489/107948280-a43c9a00-6fb9-11eb-973c-e61bdb7bc627.png)
+
+Rolling back a update:
+
+In this case the update worked, but what would happen if it had for some reason failed. Fortunately for us Kubernetes keeps the old replica set around, which includes the config for just this reason.
+
+Let's get the replica set list
+
+```
+kubectl get replicaset
+```
+
+And let's look at the latest storefront replica
+
+```
+kubectl describe replicaset storefront-bc8b44ccf
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948307-ad2d6b80-6fb9-11eb-846e-3db9ca6f82eb.png)
+
+If we look at the Image we can see it's my v0.0.2 image. We can also see stuff like the pods being added during the update.
+But let's look at the old replica set
+
+```
+kubectl describe replicaset storefront-6ffdd9cc6b
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948346-b61e3d00-6fb9-11eb-829f-64a69b36d395.png)
+
+In this case we see it's showing the old 0.0.1 image.
+So we can see how kuberntes keeps the old configurations around (the different revisions are tied to the replica sets)
+If we undo the rollout Kubernetes will revert to the previous version
+
+Undo the rollout: --------
+
+```
+kubectl rollout undo deployment storefront
+```
+
+The rollback process follows the same process as the update process, gradually moving resources between the replica sets by creating pods in one and once they are ready deleting in the other.
+
+Let's monitor the status
+
+```
+kubectl rollout status deployment storefront
+```
+
+Once it's finished if we now look at the namespace
+```
+kubectl get all
+```
+
+We see that all of the pods are now the original replica set version, and there are no pods in the new one.
+If we check this by going to the status we can see the rollback has worked (remember to replace with the one for your service) :
+
+```
+curl -i -k -X GET https://<external IP>/sf/status
+```
+
+![image](https://user-images.githubusercontent.com/42166489/107948386-c1716880-6fb9-11eb-9257-1c4429fd2e74.png)
+
+Normally of course the testing of the pods would be linked into CI/CD automated tooling that would trigger the rollback if it detected a problem automatically, but here we're trying to show you the capabilities of Kubernetes rather than just run automation.
+Important note on external services:
+
+Kubernetes can manage changes and rollbacks within it's environment, provided the older versions of the changes are available. So don't delete your old container images unless you're sure you won't need them! Kubernetes can handle the older versions of the config itself, but always a good idea to keep an archive of them anyway, in case your cluster crashes and takes your change history with it.
+
+However, Kubernetes itself cannot manage changes outside it's environment. It may seem obvious, but Kubernetes is about compute, not persistence, and in most cases the persistence layer is external to Kubernetes on the providers storage environments.
+
+Persistence is by definition about making things persistent, they exist outside the compute operation, and that can cause problems if other elements also use the stored data.
+
+This is especially critical for data in databases. You need to coordinate changes to the database, especially changes to the database schema (which is outside Kubernetes) with changes to the code in the services that access the database (usually running in Kubernetes). Kubernetes can handle the rolling upgrades of the services, but if different versions of your service have incompatible data requirements you've got a problem. Equally if you do an upgrade that changes the database scheme in a way that's incompatible with earlier versions of the service, and then you need to roll back to a previous version you've got a problem.
+
+These issues are not unique to Kubernetes, they have always existed when a new version of some code that interacts with the persistence layer is deployed, but the very fast deployment cycle of microservices enabled my Kubernetes makes this more of a critical issue to consider (in 2016 Netflix were doing thousands of deployments a day, admittedly not all of them would involve persistence system changes).
+
+One common approach used is the have the microservices support different versions of the scheme, and then only upgrade to the new version once all of the microservices that access the data have support for the new version, and sufficient testing has shown that there is likely to be no need to roll back to old versions which wouldn't support the updated schema. Than, and only then is the database (or other persistence) updates to reflect the new structure.
+
+To assist with this you might like to consider and approach to limit access to the data to a single microservice (obviously for resillience there would be multiple instances) which then presents the data to the other consumers, potentially using different API endpoints to reflect the data structure. The new microservices use the new API and the old microservices can continue to use the old API's with the data microservice converting between them and the data. Of course for this to work there needs to be ways to map both API's on to a common data representation (e.g. by using default values for additional fields required by t he new API) and it may not always be possible.
+
+The newer automated tooling integrating CI/CD with automated A/B resting means that even larger numbers of deployments are coming, and some of those will involve persistence changes.
+
+The important thing is to have a strategy for combining microservice rollouts (and roll backs) with persistence (or other external to Kubernetes) changes is critical.
+
+While writing these labs I came across many web pages. Ones that I think are especially useful are detailed in the sections below
+
+### Helm
+Helm has been used here to install a number of Kubernetes services. See Helm website for details and if you need to download it there are details in the Helm web page
+
+If you download Helm version 3 it does not come with a pre-configured chart repository. The master repo used to be at kubernetes-charts.storage.googleapis.com however in late 2020 it was deprecated when the help project stopped maintaining it's chart repo, so you may experience access problems, as well as it not containing current charts. Charts are now managed by the individual projects / companies (e.g. https://kubernetes.github.io/dashboard/ for the dashboard). There are some companies that maintain a collection of helm charts from multiple other sources which may be suitable if you can't find the individual project charts (E.g. The Bitnami helm chart repo at https://charts.bitnami.com/bitnami)
+Ingress
+
+For more information on Nginx Ingress (this also looks in more detail at the benefits / disadvantages of using an Ingress vs Load Balancer)
+
+If you don't want to use the nginx there is a list of other controllers. Note that different controllers may well use different annotations to the ones we've used in these labs, so for the Ingress rules your version of the yaml files will probably need to be modified.
+Kubernetes
+
+We have been using Kubernetes a lot, here is a link to the Kubernetes website:
+https://kubernetes.io/
+
+For more info on the structure of the components in Kubernetes see the Kubernetes documentation "What is Kubernetes" page
+
+To learn more about how to define liveness and readiness probes (and if you have Kubernetes 1.16 or later also start up probes) see the probes documentation:
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+
+Managing database and kubernetes rollouts can be complex, here is a link to an external web page that discusses the problem. How to handle DB Scheme changes during Kubernetes rollouts:
+https://www.weave.works/blog/how-to-correctly-handle-db-schemas-during-kubernetes-rollouts
+
+### Kubectl
+Kubectl is a very powerful tool, but it can be complex to use, fortunately there is a cheet sheet:
+https://kubernetes.io/docs/reference/kubectl/cheatsheet
+
+### Prometheus
+More details of Prometheus can be find at the Prometheus web page.
+https://prometheus.io/
+
+If you want to look at using external storage for prometheus here is an overview.
+https://prometheus.io/docs/prometheus/latest/storage/
+
+The Prometheus query language is very powerful for fill details look at it's Query Basics page.
+Metrics to gather.
+https://prometheus.io/docs/prometheus/latest/querying/basics/
+
+This article at golden metrics has some intereting information on what you should think about monitoring.
+https://blog.appoptics.com/the-four-golden-signals-for-monitoring-distributed-systems/
+
+### Service mesh
+For more details on the service mesh concept the site servicemesh.io has lot's of interesting information, it is however run by one of the creators of linkerd so may be biased towards that.
+https://servicemesh.io/
+
+You have reached the end of this section of the lab and of the Kubernetes sections.
+
+
+
+
+
+
 
 
 
