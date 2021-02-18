@@ -756,19 +756,21 @@ To see the progress in creating the Ingress service type :
 kubectl --namespace ingress-nginx get services -o wide ingress-nginx-controller
 ```
 
-Saikat_Dey@cloudshell:~ (ap-mumbai-1)$ kubectl --namespace ingress-nginx get services -o wide ingress-nginx-controller
-NAME                       TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE     SELECTOR
-ingress-nginx-controller   LoadBalancer   10.96.176.225   <pending>     80:30682/TCP,443:32125/TCP   5m56s   app.kubernetes.io/component=controller,app.kubernetes.io/instance=ingress-nginx,app.kubernetes.io/name=ingress-nginx
+Saikat_Dey@cloudshell:helidon-kubernetes (ap-mumbai-1)$ kubectl --namespace ingress-nginx get services -o wide ingress-nginx-controller
+NAME                       TYPE           CLUSTER-IP     EXTERNAL-IP     PORT(S)                      AGE   SELECTOR
+ingress-nginx-controller   LoadBalancer   10.96.62.149   152.67.30.107   80:31003/TCP,443:30114/TCP   21h   app.kubernetes.io/component=controller,app.kubernetes
+
+![image](https://user-images.githubusercontent.com/42166489/108353547-4b197400-720e-11eb-9c65-16a323596455.png)
 
 Locate the Resources section on the lower left side.
 
 Click on the Listeners option.
 
-![image](https://user-images.githubusercontent.com/42166489/107913566-ad604380-6f86-11eb-802b-baad61dff755.png)
+![image](https://user-images.githubusercontent.com/42166489/108353568-51a7eb80-720e-11eb-969d-a807cfa60959.png)
 
 Click on the Listeners option and select Edit.
 
-![image](https://user-images.githubusercontent.com/42166489/107913585-b5b87e80-6f86-11eb-9e48-2508ae66eed5.png)
+![image](https://user-images.githubusercontent.com/42166489/108353596-58366300-720e-11eb-9fef-efeac7265f24.png)
 
 We need to change the port.
 In the popup locate the BackendSet option, click on it and select the TCP-80 option
