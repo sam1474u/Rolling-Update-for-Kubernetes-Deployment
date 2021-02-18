@@ -775,8 +775,6 @@ Click on the Listeners option and select Edit.
 We need to change the port.
 In the popup locate the BackendSet option, click on it and select the TCP-80 option
 
-![image](https://user-images.githubusercontent.com/42166489/107913605-c0731380-6f86-11eb-8e10-55d16d7112a5.png)
-
 Click the Update Listener.
 Change the backend port to 80.
 
