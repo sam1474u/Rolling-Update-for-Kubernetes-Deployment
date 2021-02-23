@@ -954,6 +954,10 @@ curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
 
 If you get 424 failed dependency or timeouts it's because the services are doing their lazy initialization, wait a minute or so and retry the request.
 
+Try after sometime (replace with the ingress controllers load ballancer you got earlier)
+
+<img width="916" alt="Screenshot 2021-02-23 at 12 09 11 PM" src="https://user-images.githubusercontent.com/42166489/108810768-e2494780-75d1-11eb-94c1-7ff8fa30afe6.png">
+
 Run : 
 
 ```
@@ -969,10 +973,11 @@ zipkin            10.244.1.15:9411                            15h
 And also on the stockmanager pod, you also need to replace the pod id !
 
 ```
-kubectl logs stockmanager-d6cc5c9b7-bbjdp --tail=20
+kubectl logs stockmanager-7857497968-8wvdh --tail=200
 ```
+<img width="1383" alt="Screenshot 2021-02-23 at 12 14 30 PM" src="https://user-images.githubusercontent.com/42166489/108810782-e83f2880-75d1-11eb-8883-5d98560f6e28.png">
 
-![image](https://user-images.githubusercontent.com/42166489/107915949-717bad00-6f8b-11eb-9d86-b85ff47a2750.png)
+<img width="1385" alt="Screenshot 2021-02-23 at 12 16 03 PM" src="https://user-images.githubusercontent.com/42166489/108810786-eb3a1900-75d1-11eb-90bd-add5242e1243.png">
 
 Open your browser
 
