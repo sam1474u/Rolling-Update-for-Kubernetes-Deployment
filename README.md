@@ -1791,7 +1791,7 @@ cd $HOME/helidon-kubernetes/cloud-native-kubernetes/auto-scaling
 bash generate-load.sh 152.67.28.51 0.1
 ```
 
-![image](https://user-images.githubusercontent.com/42166489/107946882-a3a30400-6fb7-11eb-8802-4700470f5b0d.png)
+<img width="711" alt="Screenshot 2021-02-23 at 1 39 21 PM" src="https://user-images.githubusercontent.com/42166489/108816965-242bbb00-75dd-11eb-8e27-0e9c4fc4cedf.png">
 
 The script will just get the stock level data, attempting to do so about 10 times a second (the 0.1 above is the time in seconds to wait after the request returns). The returned data will be displayed in the […] (for clarity here it's been removed
 
