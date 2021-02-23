@@ -1130,7 +1130,10 @@ First let's make sure that the service is running, (replace with the external ip
 curl -i -X GET -u jack:password http://<External IP>:80/store/stocklevel
 ```
 
+<img width="943" alt="Screenshot 2021-02-23 at 1 04 22 PM" src="https://user-images.githubusercontent.com/42166489/108813849-c648a480-75d7-11eb-829c-71180a1f3783.png">
+
 Lets look at the pods to check all is running fine:
+
 
 ```
 kubectl get pods
@@ -1500,16 +1503,13 @@ What happens if a request is made to the service while before the pod is ready ?
 
 To see what happens if the readiness probe does not work we can simply undeploy the stock manager service.
 
-    First let's check it's running fine (replace the with the one for your service, and be prepared for a short delay as we'd just restarted everything)
+First let's check it's running fine (replace the with the one for your service, and be prepared for a short delay as we'd just restarted everything)
 
+```
 curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
-curl -i -k -X GET -u jack:password https://152.67.28.51/store/stocklevel
+```
 
-HTTP/1.1 424 Failed Dependency
-Date: Fri, 12 Feb 2021 10:45:34 GMT
-Content-Type: application/json
-Transfer-Encoding: chunked
-Connection: keep-alive
+<img width="916" alt="Screenshot 2021-02-23 at 12 09 11 PM" src="https://user-images.githubusercontent.com/42166489/108814831-7a96fa80-75d9-11eb-8c07-1c127d82bde8.png">
 
 Now let's use kubectl to undeploy just the stockmanager service
 kubectl delete -f stockmanager-deployment.yaml
