@@ -2174,8 +2174,9 @@ We should of course check that our update is correctly delivering a service (rep
 
 ```
 curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
-curl -i -k -X GET -u jack:password https://152.67.28.51/store/stocklevel
 ```
+
+<img width="973" alt="Screenshot 2021-02-23 at 3 18 51 PM" src="https://user-images.githubusercontent.com/42166489/108826572-74f5e080-75ea-11eb-8a85-4129b65ed794.png">
 
 Now let's check the output from the StatusResource (again replace the IP address with the one for your service)
 
