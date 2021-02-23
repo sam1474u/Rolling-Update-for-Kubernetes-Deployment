@@ -922,8 +922,10 @@ Switch to the helidon-kubernetes directory:
 ```
 cd $HOME/helidon-kubernetes
 ```
-
+**Note**: change the imagePullPolicy line in the stockmanager-deployment.yaml from "IfNotPresent" to "Always" 
 Now run the deploy.sh script
+
+<img width="638" alt="Screenshot 2021-02-23 at 1 31 26 PM" src="https://user-images.githubusercontent.com/42166489/108816053-7e2b8100-75db-11eb-9f9c-af5169485e48.png">
 
 ```
 bash deploy.sh
@@ -1555,6 +1557,8 @@ Check the service is responding properly now
 ```
 curl -i -k -X GET -u jack:password https://<external IP>/store/stocklevel
 ```
+
+<img width="916" alt="Screenshot 2021-02-23 at 12 09 11 PM" src="https://user-images.githubusercontent.com/42166489/108814831-7a96fa80-75d9-11eb-8c07-1c127d82bde8.png">
 
 Startup probes:
 
