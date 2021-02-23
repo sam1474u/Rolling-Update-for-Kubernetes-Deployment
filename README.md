@@ -1861,21 +1861,33 @@ Now restart the load generator program. Note that you may need to change the sle
 
 In the OCI Cloud Shell where you were running the load balancer previously (substitute the IP address for the ingress for your cluster) If needed run multiple in different cloud shells.
 
+```
 cd $HOME/helidon-kubernetes/cloud-native-kubernetes/auto-scaling
 bash generate-load.sh 152.67.28.51 0.1
+```
 
-![image](https://user-images.githubusercontent.com/42166489/107947303-393e9380-6fb8-11eb-84ef-27bcd383917c.png)
+<img width="919" alt="Screenshot 2021-02-23 at 2 30 27 PM" src="https://user-images.githubusercontent.com/42166489/108822415-0febbc00-75e5-11eb-927e-5c7c126cd755.png">
 
 Let's check there is a load. In the OCI Cloud Shell type
+
+```
 kubectl top pods
+```
 
 Let's look at the autoscaler. In the OCI Cloud Shell type
+
+```
 kubectl get horizontalpodautoscaler storefront
+```
 
 Let's look at the autoscaler details. In the OCI Cloud Shell type
+
+```
 kubectl describe hpa storefront
+```
 
 Let's look at those pods. In the OCI Cloud Shell type
+
 ```
 kubectl top pods
 ```
